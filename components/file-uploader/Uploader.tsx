@@ -87,7 +87,7 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
                 toast.success("File uploaded succesfully");
 
                 resolve();
-              } catch (parseError) {
+              } catch {
                 reject(new Error("Failed to parse upload response"));
               }
             } else {
