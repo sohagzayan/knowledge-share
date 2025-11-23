@@ -1,7 +1,7 @@
 import Hero from "./_components/Hero";
 import WhyLearnSection from "./_components/WhyLearnSection";
 import FeaturesSection from "./_components/FeaturesSection";
-import Footer from "./_components/Footer";
+import CTASection from "./_components/CTASection";
 
 export default function Home() {
   return (
@@ -11,6 +11,9 @@ export default function Home() {
       <WhyLearnSection />
 
       <FeaturesSection />
+
+      <CTASection />
     </>
   );
 }
+
