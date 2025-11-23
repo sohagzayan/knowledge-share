@@ -4,19 +4,23 @@ import Image from "next/image";
 
 import Link from "next/link";
 import Logo from "@/public/logo.png";
-import { ThemeToggle } from "@/components/ui/themeToggle";
 import { authClient } from "@/lib/auth-client";
 import { buttonVariants } from "@/components/ui/button";
 import { UserDropdown } from "./UserDropdown";
 
 const navigationItems = [
-  { name: "Home", href: "/" },
   { name: "Courses", href: "/courses" },
-  { name: "Dashboard", href: "/dashboard" },
+  { name: "Dashboard", href: "/dashboard", requireAuth: true },
 ];
 
 export function Navbar() {
   const { data: session, isPending } = authClient.useSession();
+  
+  // Filter navigation items based on auth status
+  const visibleNavItems = navigationItems.filter(
+    (item) => !item.requireAuth || session
+  );
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-[backdrop-filter]:bg-background/60">
       <div className="container flex min-h-16 items-center mx-auto px-4 md:px-6 lg:px-8">
@@ -26,9 +30,9 @@ export function Navbar() {
         </Link>
 
         {/* Desktop navigation */}
-        <nav className="hidden md:flex md:flex-1 md:items-center md:justify-between">
-          <div className="flex items-center space-x-2">
-            {navigationItems.map((item) => (
+        <nav className="hidden md:flex md:flex-1 md:items-center md:justify-end">
+          <div className="flex items-center space-x-6">
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
@@ -39,9 +43,7 @@ export function Navbar() {
             ))}
           </div>
 
-          <div className="flex items-center space-x-4">
-            <ThemeToggle />
-
+          <div className="flex items-center space-x-4 ml-6">
             {isPending ? null : session ? (
               <UserDropdown
                 email={session.user.email}
