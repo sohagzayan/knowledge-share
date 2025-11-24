@@ -1,16 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { UserDropdown } from "./UserDropdown";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const navigationItems = [
   { name: "Courses", href: "/courses" },
@@ -32,10 +26,103 @@ const supportItems = [
   { name: "Hire an Expert", href: "#" },
 ];
 
+const instructorItems = [
+  { name: "Become an Instructor", href: "#" },
+  { name: "Instructors List", href: "#" },
+];
+
+const studentItems = [{ name: "Students Gallery", href: "#" }];
+
+function useHoverMenu(delay = 120) {
+  const [open, setOpen] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleEnter = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setOpen(true);
+  };
+
+  const handleLeave = () => {
+    timeoutRef.current = setTimeout(() => setOpen(false), delay);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const toggle = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setOpen((prev) => !prev);
+  };
+
+  return { open, handleEnter, handleLeave, toggle };
+}
+
+function NavDropdown({
+  label,
+  items,
+}: {
+  label: string;
+  items: { name: string; href: string }[];
+}) {
+  const { open, handleEnter, handleLeave, toggle } = useHoverMenu();
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1 cursor-pointer outline-none"
+      >
+        {label}
+        <ChevronDown
+          className={`h-4 w-4 transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      <div
+        className={`absolute left-1/2 -translate-x-1/2 lg:left-0 lg:translate-x-0 top-full mt-3 w-56 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur-md transition-all duration-200 ${
+          open
+            ? "opacity-100 translate-y-0 pointer-events-auto"
+            : "opacity-0 translate-y-2 pointer-events-none"
+        }`}
+        onMouseEnter={handleEnter}
+        onMouseLeave={handleLeave}
+      >
+        <div className="py-2">
+          {items.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="block px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+            >
+              {item.name}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Navbar() {
   const { data: session, isPending } = authClient.useSession();
-  const [resourcesOpen, setResourcesOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
   
   // Filter navigation items based on auth status
   const visibleNavItems = navigationItems.filter(
@@ -62,67 +149,10 @@ export function Navbar() {
               </Link>
             ))}
             
-            {/* Resources Dropdown */}
-            <DropdownMenu open={resourcesOpen} onOpenChange={setResourcesOpen}>
-              <div
-                onMouseEnter={() => setResourcesOpen(true)}
-                onMouseLeave={() => setResourcesOpen(false)}
-              >
-                <DropdownMenuTrigger className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1 outline-none data-[state=open]:text-primary cursor-pointer">
-                  Resources
-                  <ChevronDown 
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      resourcesOpen ? "rotate-180" : ""
-                    }`} 
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align="start" 
-                  className="w-56 animate-in fade-in slide-in-from-top-2 duration-200"
-                  onMouseEnter={() => setResourcesOpen(true)}
-                  onMouseLeave={() => setResourcesOpen(false)}
-                >
-                  {resourcesItems.map((item) => (
-                    <DropdownMenuItem key={item.name} asChild>
-                      <Link href={item.href} className="cursor-pointer transition-colors">
-                        {item.name}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </div>
-            </DropdownMenu>
-
-            {/* Get Support Dropdown */}
-            <DropdownMenu open={supportOpen} onOpenChange={setSupportOpen}>
-              <div
-                onMouseEnter={() => setSupportOpen(true)}
-                onMouseLeave={() => setSupportOpen(false)}
-              >
-                <DropdownMenuTrigger className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1 outline-none data-[state=open]:text-primary cursor-pointer">
-                  Get Support
-                  <ChevronDown 
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      supportOpen ? "rotate-180" : ""
-                    }`} 
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align="start" 
-                  className="w-56 animate-in fade-in slide-in-from-top-2 duration-200"
-                  onMouseEnter={() => setSupportOpen(true)}
-                  onMouseLeave={() => setSupportOpen(false)}
-                >
-                  {supportItems.map((item) => (
-                    <DropdownMenuItem key={item.name} asChild>
-                      <Link href={item.href} className="cursor-pointer transition-colors">
-                        {item.name}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </div>
-            </DropdownMenu>
+            <NavDropdown label="Resources" items={resourcesItems} />
+            <NavDropdown label="Instructors" items={instructorItems} />
+            <NavDropdown label="Students" items={studentItems} />
+            <NavDropdown label="Get Support" items={supportItems} />
           </div>
 
           <div className="flex items-center space-x-4 ml-6">
