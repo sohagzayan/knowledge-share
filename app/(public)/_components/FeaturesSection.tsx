@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 
 interface featureProps {
   title: string;
@@ -36,14 +36,10 @@ const features: featureProps[] = [
 ];
 
 export default function FeaturesSection() {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
+  const { ref, isVisible } = useRevealOnScroll<HTMLElement>();
 
   return (
-    <section className="py-24 px-4 mb-32 relative overflow-hidden">
+    <section ref={ref} className="py-24 px-4 mb-32 relative overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => (

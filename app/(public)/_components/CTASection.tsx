@@ -4,9 +4,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 
 export default function CTASection() {
   const [email, setEmail] = useState("");
+  const { ref, isVisible } = useRevealOnScroll<HTMLElement>();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,8 +17,12 @@ export default function CTASection() {
   };
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24 px-4">
-      <div className="max-w-4xl mx-auto text-center">
+    <section ref={ref} className="py-16 sm:py-20 lg:py-24 px-4">
+      <div
+        className={`max-w-4xl mx-auto text-center transition-all duration-700 ${
+          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+        }`}
+      >
         {/* Headline */}
         <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
           <span className="block uppercase">WHERE WHAT YOU KNOW</span>

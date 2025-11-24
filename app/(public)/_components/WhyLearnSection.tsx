@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEffect, useState } from "react";
+import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 
 interface FeatureCardProps {
   number: string;
@@ -37,14 +37,10 @@ const featureCards: FeatureCardProps[] = [
 ];
 
 export default function WhyLearnSection() {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
+  const { ref, isVisible } = useRevealOnScroll<HTMLElement>();
 
   return (
-    <section className="py-20 px-4">
+    <section ref={ref} className="py-20 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-16">

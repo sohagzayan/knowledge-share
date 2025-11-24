@@ -3,21 +3,24 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Clock, Users, Award, BookOpen } from "lucide-react";
+import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 
 export default function Hero() {
+  const { ref, isVisible: inView } = useRevealOnScroll<HTMLElement>();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Small delay to ensure smooth onload animation
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, []);
+    if (inView) {
+      const timer = setTimeout(() => setIsVisible(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [inView]);
 
   return (
-    <section className="relative py-12 md:py-16 overflow-hidden bg-background dark:bg-[#1a2e44] transition-colors duration-300">
+    <section
+      ref={ref}
+      className="relative py-12 md:py-16 overflow-hidden bg-background dark:bg-[#1a2e44] transition-colors duration-300"
+    >
       <div className="container mx-auto px-4 md:px-6 lg:px-8">
         <div className="flex flex-col items-center text-center space-y-6 max-w-3xl mx-auto">
           {/* Main headline - two lines with staggered animation */}

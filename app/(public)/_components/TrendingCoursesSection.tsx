@@ -8,6 +8,7 @@ import { useConstructUrl } from "@/hooks/use-construct-url";
 import { Star, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 
 interface TrendingCoursesSectionProps {
   courses: PublicCourseType[];
@@ -15,25 +16,8 @@ interface TrendingCoursesSectionProps {
 
 export default function TrendingCoursesSection({ courses }: TrendingCoursesSectionProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const { ref: sectionRef, isVisible } = useRevealOnScroll<HTMLElement>();
   const [canScrollRight, setCanScrollRight] = useState(true);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (scrollContainerRef.current) {
-      observer.observe(scrollContainerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     const checkScroll = () => {
@@ -67,7 +51,7 @@ export default function TrendingCoursesSection({ courses }: TrendingCoursesSecti
   const trendingCourses = courses.slice(0, 8);
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24 px-4 overflow-hidden">
+    <section ref={sectionRef} className="py-16 sm:py-20 lg:py-24 px-4 overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div
