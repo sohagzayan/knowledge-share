@@ -173,22 +173,20 @@ export function Navbar() {
               <>
                 <Link
                   href="/login"
-                  className="group relative px-4 py-1.5 font-semibold text-sm text-white border border-white/80 bg-[#1A2B40] hover:text-primary hover:border-primary transition-all duration-300 shadow-lg hover:shadow-xl overflow-hidden"
-                  style={{ borderRadius: '6px' }}
+                  className="group relative rounded-md px-4 py-1.5 font-semibold text-sm text-white border border-white/80 bg-[#1A2B40] hover:text-primary hover:border-primary transition-all duration-300 shadow-lg hover:shadow-xl overflow-hidden"
                 >
                   {/* Hover glow effect */}
-                  <span className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ borderRadius: '6px' }} />
+                  <span className="absolute inset-0 rounded-md bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <span className="relative z-10 transition-colors duration-300">Sign in</span>
                 </Link>
                 <Link
                   href="/login"
-                  className="group relative px-4 py-1.5 font-semibold text-sm text-white bg-primary hover:bg-primary/90 transition-all duration-300 shadow-lg hover:shadow-xl overflow-hidden"
-                  style={{ borderRadius: '6px' }}
+                  className="group relative rounded-md px-4 py-1.5 font-semibold text-sm text-white bg-primary hover:bg-primary/90 transition-all duration-300 shadow-lg hover:shadow-xl overflow-hidden"
                 >
                   {/* Hover glow effect */}
-                  <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ borderRadius: '6px' }} />
+                  <span className="absolute inset-0 rounded-md bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   {/* Shine effect on hover */}
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" style={{ borderRadius: '6px' }} />
+                  <span className="absolute inset-0 rounded-md bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                   <span className="relative z-10">Get Started</span>
                 </Link>
               </>

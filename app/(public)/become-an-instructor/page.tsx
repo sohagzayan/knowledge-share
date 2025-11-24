@@ -87,8 +87,8 @@ export default function BecomeAnInstructorPage() {
               high-impact learning experiences.
             </p>
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Button size="lg" className="h-12 px-8 text-base">
-                Register Now
+              <Button size="lg" className="h-12 px-8 text-base" asChild>
+                <Link href="/instructor-registration">Register Now</Link>
               </Button>
               <Button
                 size="lg"
