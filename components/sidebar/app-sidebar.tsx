@@ -16,6 +16,9 @@ import {
   IconUserCircle,
   IconHeart,
   IconStar,
+  IconWallet,
+  IconSpeakerphone,
+  IconReceipt,
 } from "@tabler/icons-react";
 import Logo from "@/public/logo.png";
 
@@ -60,6 +63,21 @@ const data = {
       title: "Reviews",
       url: "/admin/reviews",
       icon: IconStar,
+    },
+    {
+      title: "Withdrawals",
+      url: "/admin/withdrawals",
+      icon: IconWallet,
+    },
+    {
+      title: "Announcements",
+      url: "/admin/announcements",
+      icon: IconSpeakerphone,
+    },
+    {
+      title: "Order History",
+      url: "/admin/order-history",
+      icon: IconReceipt,
     },
     {
       title: "Analytics",

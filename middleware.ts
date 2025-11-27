@@ -36,6 +36,7 @@ async function authMiddleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+
 export const config = {
   // Run on all routes except static assets, but auth check only on admin routes
   matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth).*)"],

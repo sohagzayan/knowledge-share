@@ -2,8 +2,22 @@ import { SiteHeader } from "@/components/sidebar/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ReactNode } from "react";
 import { AppSidebar } from "./_components/DashboardAppSidebar";
+import { requireUser } from "../data/user/require-user";
+import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  const sessionUser = await requireUser();
+  const dbUser = await prisma.user.findUnique({
+    where: { id: sessionUser.id },
+    select: { role: true },
+  });
+
+  // If user is admin, redirect to admin route
+  if (dbUser?.role === "admin") {
+    redirect("/admin");
+  }
+
   return (
     <SidebarProvider
       style={
