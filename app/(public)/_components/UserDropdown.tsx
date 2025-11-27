@@ -5,6 +5,7 @@ import {
   Home,
   LayoutDashboardIcon,
   LogOutIcon,
+  UserRound,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -52,7 +53,7 @@ export function UserDropdown({ email, name, image }: iAppProps) {
             {name}
           </span>
           <span className="text-muted-foreground truncate text-xs font-normal">
-            john@john.com
+            {email}
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -67,6 +68,12 @@ export function UserDropdown({ email, name, image }: iAppProps) {
             <Link href="/course">
               <BookOpen size={16} className="opacity-60" aria-hidden="true" />
               <span>Courses</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/settings/account">
+              <UserRound size={16} className="opacity-60" aria-hidden="true" />
+              <span>Accounts</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

@@ -9,6 +9,10 @@ import {
   IconHelp,
   IconSearch,
   IconSettings,
+  IconUserCircle,
+  IconHeart,
+  IconStar,
+  IconReceipt,
 } from "@tabler/icons-react";
 import Logo from "@/public/logo.png";
 
@@ -33,6 +37,26 @@ const data = {
       title: "Dashboard",
       url: "/dashboard",
       icon: IconDashboard,
+    },
+    {
+      title: "My Profile",
+      url: "/dashboard/profile",
+      icon: IconUserCircle,
+    },
+    {
+      title: "Wishlist",
+      url: "/dashboard/wishlist",
+      icon: IconHeart,
+    },
+    {
+      title: "Reviews",
+      url: "/dashboard/reviews",
+      icon: IconStar,
+    },
+    {
+      title: "Order History",
+      url: "/dashboard/orders",
+      icon: IconReceipt,
     },
   ],
   navClouds: [
