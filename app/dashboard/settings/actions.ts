@@ -126,6 +126,10 @@ export type SocialLinksFormState =
   | { status: "idle" }
   | { status: "success"; message: string }
   | { status: "error"; message: string };
+export type BillingFormState =
+  | { status: "idle" }
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
 
 const profileSchema = z.object({
   firstName: z
@@ -188,6 +192,22 @@ const socialLinksSchema = z.object({
     .url("LinkedIn must be a valid URL.")
     .optional()
     .or(z.literal("")),
+});
+
+const billingSchema = z.object({
+  firstName: z.string().min(2, "First name is required."),
+  lastName: z.string().min(2, "Last name is required."),
+  companyName: z.string().max(100).optional().or(z.literal("")),
+  phoneNumber: z.string().max(30).optional().or(z.literal("")),
+  email: z.string().email("Enter a valid email address."),
+  addressLine1: z.string().min(3, "Address line 1 is required."),
+  addressLine2: z.string().max(100).optional().or(z.literal("")),
+  city: z.string().min(2, "City is required."),
+  state: z.string().min(2, "State/Province is required."),
+  postalCode: z.string().min(2, "Postal code is required."),
+  country: z.string().min(2, "Country is required."),
+  vatNumber: z.string().max(50).optional().or(z.literal("")),
+  notes: z.string().max(500).optional().or(z.literal("")),
 });
 
 export async function updateProfileAction(
@@ -304,6 +324,75 @@ export async function updateSocialLinksAction(
     return {
       status: "error",
       message: "Failed to update social profiles. Please try again.",
+    };
+  }
+}
+
+export async function upsertBillingAddressAction(
+  _prevState: BillingFormState,
+  formData: FormData
+): Promise<BillingFormState> {
+  const user = await requireUser();
+
+  const submission = {
+    firstName: formData.get("firstName")?.toString() ?? "",
+    lastName: formData.get("lastName")?.toString() ?? "",
+    companyName: formData.get("companyName")?.toString() ?? "",
+    phoneNumber: formData.get("phoneNumber")?.toString() ?? "",
+    email: formData.get("email")?.toString() ?? "",
+    addressLine1: formData.get("addressLine1")?.toString() ?? "",
+    addressLine2: formData.get("addressLine2")?.toString() ?? "",
+    city: formData.get("city")?.toString() ?? "",
+    state: formData.get("state")?.toString() ?? "",
+    postalCode: formData.get("postalCode")?.toString() ?? "",
+    country: formData.get("country")?.toString() ?? "",
+    vatNumber: formData.get("vatNumber")?.toString() ?? "",
+    notes: formData.get("notes")?.toString() ?? "",
+  };
+
+  const parsed = billingSchema.safeParse(submission);
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Invalid billing details.",
+    };
+  }
+
+  const data = parsed.data;
+
+  try {
+    await prisma.billingAddress.upsert({
+      where: { userId: user.id },
+      update: {
+        ...data,
+        companyName: data.companyName || null,
+        phoneNumber: data.phoneNumber || null,
+        addressLine2: data.addressLine2 || null,
+        vatNumber: data.vatNumber || null,
+        notes: data.notes || null,
+      },
+      create: {
+        ...data,
+        companyName: data.companyName || null,
+        phoneNumber: data.phoneNumber || null,
+        addressLine2: data.addressLine2 || null,
+        vatNumber: data.vatNumber || null,
+        notes: data.notes || null,
+        userId: user.id,
+      },
+    });
+
+    revalidatePath("/dashboard/settings");
+    return {
+      status: "success",
+      message: "Billing address updated.",
+    };
+  } catch (error) {
+    console.error("Failed to update billing address", error);
+    return {
+      status: "error",
+      message: "Unable to update billing address. Please try again.",
     };
   }
 }

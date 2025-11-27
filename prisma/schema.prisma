@@ -38,10 +38,33 @@ model User {
   banned     Boolean?
   banReason  String?
   banExpires DateTime?
+  billingAddress BillingAddress?
 
   @@unique([email])
   @@unique([username])
   @@map("user")
+}
+
+model BillingAddress {
+  id            String   @id @default(uuid())
+  firstName     String
+  lastName      String
+  companyName   String?
+  phoneNumber   String?
+  email         String
+  addressLine1  String
+  addressLine2  String?
+  city          String
+  state         String
+  postalCode    String
+  country       String
+  vatNumber     String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
 }
 
 model Session {

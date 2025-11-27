@@ -13,19 +13,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { ProfileForm } from "./_components/ProfileForm";
 import { PasswordForm } from "./_components/PasswordForm";
 import { SocialLinksForm } from "./_components/SocialLinksForm";
+import { BillingAddressForm } from "./_components/BillingAddressForm";
 
 export default async function SettingsPage() {
   const sessionUser = await requireUser();
   const dbUser = await prisma.user.findUnique({
     where: { id: sessionUser.id },
+    include: {
+      billingAddress: true,
+    },
   });
 
   const firstName = dbUser?.firstName || sessionUser.firstName || "";
@@ -103,112 +102,41 @@ export default async function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="billing">
-          <Card>
-            <CardHeader>
-              <CardTitle>Billing Address</CardTitle>
-              <CardDescription>
-                Update your billing address information for payments and invoices.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>
-                      First Name <span className="text-destructive">*</span>
-                    </Label>
-                    <Input placeholder="First Name" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>
-                      Last Name <span className="text-destructive">*</span>
-                    </Label>
-                    <Input placeholder="Last Name" />
-                  </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Company Name</Label>
-                    <Input placeholder="Company Name" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>
-                      Phone Number <span className="text-destructive">*</span>
-                    </Label>
-                    <Input placeholder="Phone Number" />
-                  </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>
-                      Email Address <span className="text-destructive">*</span>
-                    </Label>
-                    <Input placeholder="email@example.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>
-                      Country <span className="text-destructive">*</span>
-                    </Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select country" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="usa">United States</SelectItem>
-                        <SelectItem value="india">India</SelectItem>
-                        <SelectItem value="uk">United Kingdom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    Address Line 1 <span className="text-destructive">*</span>
-                  </Label>
-                  <Input placeholder="Address" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Address Line 2</Label>
-                  <Input placeholder="Apartment, suite, etc." />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>
-                      City <span className="text-destructive">*</span>
-                    </Label>
-                    <Input placeholder="City" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>
-                      State/Province <span className="text-destructive">*</span>
-                    </Label>
-                    <Input placeholder="State/Province" />
-                  </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>
-                      Postal Code <span className="text-destructive">*</span>
-                    </Label>
-                    <Input placeholder="Postal Code" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>VAT Number</Label>
-                    <Input placeholder="VAT Number" />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Additional Notes</Label>
-                  <Textarea rows={4} placeholder="Any additional information..." />
-                </div>
-
-                <div className="flex justify-end">
-                  <Button type="button">Update Billing Address</Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <BillingAddressForm
+            initialData={
+              dbUser?.billingAddress
+                ? {
+                    firstName: dbUser.billingAddress.firstName,
+                    lastName: dbUser.billingAddress.lastName,
+                    companyName: dbUser.billingAddress.companyName ?? "",
+                    phoneNumber: dbUser.billingAddress.phoneNumber ?? "",
+                    email: dbUser.billingAddress.email,
+                    addressLine1: dbUser.billingAddress.addressLine1,
+                    addressLine2: dbUser.billingAddress.addressLine2 ?? "",
+                    city: dbUser.billingAddress.city,
+                    state: dbUser.billingAddress.state,
+                    postalCode: dbUser.billingAddress.postalCode,
+                    country: dbUser.billingAddress.country,
+                    vatNumber: dbUser.billingAddress.vatNumber ?? "",
+                    notes: dbUser.billingAddress.notes ?? "",
+                  }
+                : {
+                    firstName: firstName || "",
+                    lastName: lastName || "",
+                    companyName: "",
+                    phoneNumber: dbUser?.phoneNumber ?? "",
+                    email: sessionUser.email,
+                    addressLine1: "",
+                    addressLine2: "",
+                    city: "",
+                    state: "",
+                    postalCode: "",
+                    country: "",
+                    vatNumber: "",
+                    notes: "",
+                  }
+            }
+          />
         </TabsContent>
         </Tabs>
       </div>
