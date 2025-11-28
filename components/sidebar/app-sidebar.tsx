@@ -151,12 +151,12 @@ const data = {
     },
     {
       title: "Get Help",
-      url: "#",
+      url: "/admin/get-help",
       icon: IconHelp,
     },
     {
       title: "Search",
-      url: "#",
+      url: "/admin/search",
       icon: IconSearch,
     },
   ],
