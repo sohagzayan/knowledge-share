@@ -67,7 +67,10 @@ export function UserDropdown({ email, firstName, image, userRole }: iAppProps) {
           />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-48 ">
+      <DropdownMenuContent 
+        align="end" 
+        className="min-w-48 bg-background/95 backdrop-blur-md border-border/50 shadow-xl"
+      >
         <DropdownMenuLabel className="flex min-w-0 flex-col">
           <span className="text-foreground truncate text-sm font-medium">
             {displayName}
@@ -76,12 +79,16 @@ export function UserDropdown({ email, firstName, image, userRole }: iAppProps) {
             {email}
           </span>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-border/50" />
         <DropdownMenuGroup>
           {menuItems.map((item, index) => {
             const Icon = item.icon;
             return (
-              <DropdownMenuItem key={`${item.href}-${index}`} asChild>
+              <DropdownMenuItem 
+                key={`${item.href}-${index}`} 
+                asChild
+                className="cursor-pointer hover:bg-muted/50 focus:bg-muted/50 transition-colors"
+              >
                 <Link href={item.href}>
                   <Icon size={16} className="opacity-60" aria-hidden="true" />
                   <span>{item.label}</span>
@@ -90,9 +97,12 @@ export function UserDropdown({ email, firstName, image, userRole }: iAppProps) {
             );
           })}
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-border/50" />
 
-        <DropdownMenuItem onClick={handleSignOut}>
+        <DropdownMenuItem 
+          onClick={handleSignOut}
+          className="cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10 hover:text-destructive focus:text-destructive transition-colors"
+        >
           <LogOutIcon size={16} className="opacity-60" aria-hidden="true" />
           <span>Logout</span>
         </DropdownMenuItem>

@@ -11,15 +11,10 @@ import { useConstructUrl as constructFileUrl } from "@/hooks/use-construct-url";
 const resourcesItems = [
   { name: "Creator Stories", href: "#" },
   { name: "Blog", href: "#" },
-  { name: "Training Webinars", href: "#" },
-  { name: "Free Guides & Downloads", href: "#" },
-  { name: "The Creator's Playbook Podcast", href: "#" },
 ];
 
 const supportItems = [
   { name: "Contact Support", href: "#" },
-  { name: "FAQs", href: "#" },
-  { name: "Help Center", href: "#" },
   { name: "Hire an Expert", href: "#" },
 ];
 
