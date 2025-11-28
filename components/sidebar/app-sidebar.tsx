@@ -81,17 +81,17 @@ const data = {
     },
     {
       title: "Analytics",
-      url: "#",
+      url: "/admin/analytics",
       icon: IconChartBar,
     },
     {
       title: "Projects",
-      url: "#",
+      url: "/admin/projects",
       icon: IconFolder,
     },
     {
       title: "Team",
-      url: "#",
+      url: "/admin/team",
       icon: IconUsers,
     },
   ],
