@@ -67,6 +67,18 @@ export const chapterSchema = z.object({
   courseId: z.string().uuid({ message: "Invalid course id" }),
 });
 
+export const assignmentSchema = z.object({
+  title: z.string().optional().or(z.literal("")),
+  description: z.string().optional().or(z.literal("")),
+  fileKey: z.string().optional().or(z.literal("")),
+  points: z.coerce
+    .number()
+    .min(0, { message: "Points must be a positive number" })
+    .max(1000, { message: "Points must be at most 1000" })
+    .optional(),
+  dueDate: z.string().optional().or(z.literal("")),
+});
+
 export const lessonSchema = z.object({
   name: z
     .string()
@@ -80,8 +92,24 @@ export const lessonSchema = z.object({
 
   videoKey: z.string().optional(),
   thumbnailKey: z.string().optional(),
+  assignment: assignmentSchema.optional(),
 });
+
+export const assignmentSubmissionSchema = z.object({
+  assignmentId: z.string().uuid({ message: "Invalid assignment ID" }),
+  fileKey: z.string().optional().or(z.literal("")),
+  link: z.string().url({ message: "Invalid URL format" }).optional().or(z.literal("")),
+  description: z.string().max(5000, { message: "Description must be less than 5000 characters" }).optional().or(z.literal("")),
+}).refine(
+  (data) => data.fileKey || data.link || data.description,
+  {
+    message: "At least one of file, link, or description must be provided",
+    path: ["fileKey"],
+  }
+);
 
 export type CourseSchemaType = z.infer<typeof courseSchema>;
 export type ChapterSchemaType = z.infer<typeof chapterSchema>;
 export type LessonSchemaType = z.infer<typeof lessonSchema>;
+export type AssignmentSchemaType = z.infer<typeof assignmentSchema>;
+export type AssignmentSubmissionSchemaType = z.infer<typeof assignmentSubmissionSchema>;

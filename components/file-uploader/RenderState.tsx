@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { CloudUploadIcon, ImageIcon, Loader2, XIcon } from "lucide-react";
+import { CloudUploadIcon, ImageIcon, Loader2, XIcon, FileText } from "lucide-react";
 import { Button } from "../ui/button";
 import Image from "next/image";
 
@@ -52,12 +52,22 @@ export function RenderUploadedState({
   previewUrl: string;
   isDeleting: boolean;
   handleRemoveFile: () => void;
-  fileType: "image" | "video";
+  fileType: "image" | "video" | "document";
 }) {
   return (
     <div className="relative group w-full h-full flex items-center justify-center">
       {fileType === "video" ? (
         <video src={previewUrl} controls className="rounded-md w-full h-full" />
+      ) : fileType === "document" ? (
+        <div className="flex flex-col items-center justify-center gap-4 p-8">
+          <div className="flex items-center justify-center size-20 rounded-full bg-primary/10">
+            <FileText className="size-10 text-primary" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-foreground">Document Uploaded</p>
+            <p className="text-xs text-muted-foreground mt-1">File is ready</p>
+          </div>
+        </div>
       ) : (
         <Image
           src={previewUrl}

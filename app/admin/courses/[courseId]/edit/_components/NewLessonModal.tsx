@@ -22,6 +22,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
+import { FileText, ChevronDown } from "lucide-react";
 import { tryCatch } from "@/hooks/try-catch";
 import { createLesson } from "../actions";
 import { toast } from "sonner";
@@ -34,6 +42,7 @@ export function NewLessonModal({
   chapterId: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const form = useForm<LessonSchemaType>({
@@ -42,6 +51,13 @@ export function NewLessonModal({
       name: "",
       courseId: courseId,
       chapterId: chapterId,
+      assignment: {
+        title: "",
+        description: "",
+        fileKey: "",
+        points: undefined,
+        dueDate: "",
+      },
     },
   });
 
@@ -79,7 +95,7 @@ export function NewLessonModal({
           <Plus className="size-4" /> New Lesson
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create new lesson</DialogTitle>
           <DialogDescription>
@@ -87,7 +103,7 @@ export function NewLessonModal({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form className="space-y-8" onSubmit={form.handleSubmit(onSubmit)}>
+          <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
             <FormField
               control={form.control}
               name="name"
@@ -95,12 +111,115 @@ export function NewLessonModal({
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Lesson Name" {...field} />
+                    <Input placeholder="Lesson Name" autoFocus {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            <Separator />
+
+            <Collapsible
+              open={isAssignmentOpen}
+              onOpenChange={setIsAssignmentOpen}
+              className="space-y-4"
+            >
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="size-4" />
+                    <span>Add Assignment (Optional)</span>
+                  </div>
+                  <ChevronDown
+                    className={`size-4 transition-transform ${
+                      isAssignmentOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-4">
+                <FormField
+                  control={form.control}
+                  name="assignment.title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assignment Title</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Complete the Python exercise"
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="assignment.description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assignment Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Provide instructions for the assignment..."
+                          rows={3}
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="assignment.points"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Points</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="100"
+                            value={field.value ?? ""}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value ? Number(e.target.value) : undefined
+                              )
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="assignment.dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Due Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" value={field.value ?? ""} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             <DialogFooter>
               <Button disabled={pending} type="submit">

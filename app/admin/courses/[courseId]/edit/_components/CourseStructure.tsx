@@ -33,8 +33,15 @@ import {
   ChevronRight,
   FileText,
   GripVertical,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import Link from "next/link";
 import { toast } from "sonner";
 import { reorderChapters, reorderLessons } from "../actions";
@@ -357,12 +364,23 @@ export function CourseStructure({ data }: iAppProps) {
                                       >
                                         <GripVertical className="size-4" />
                                       </Button>
-                                      <FileText className="size-4" />
-                                      <Link
-                                        href={`/admin/courses/${data.id}/${item.id}/${lesson.id}`}
-                                      >
-                                        {lesson.title}
-                                      </Link>
+                                      <FileText className="size-4 text-muted-foreground" />
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Link
+                                              href={`/admin/courses/${data.id}/${item.id}/${lesson.id}`}
+                                              className="flex items-center gap-2 hover:text-primary transition-colors group"
+                                            >
+                                              <span>{lesson.title}</span>
+                                              <ExternalLink className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                                            </Link>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Click to edit lesson</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
                                     </div>
 
                                     <DeleteLesson

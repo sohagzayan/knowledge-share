@@ -21,16 +21,53 @@ export async function updateLesson(
       };
     }
 
-    await prisma.lesson.update({
-      where: {
-        id: lessonId,
-      },
-      data: {
-        title: result.data.name,
-        description: result.data.description,
-        thumbnailKey: result.data.thumbnailKey,
-        videoKey: result.data.videoKey,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.lesson.update({
+        where: {
+          id: lessonId,
+        },
+        data: {
+          title: result.data.name,
+          description: result.data.description,
+          thumbnailKey: result.data.thumbnailKey,
+          videoKey: result.data.videoKey,
+        },
+      });
+
+      // Handle assignment
+      if (result.data.assignment?.title) {
+        await tx.assignment.upsert({
+          where: {
+            lessonId: lessonId,
+          },
+          create: {
+            title: result.data.assignment.title,
+            description: result.data.assignment.description ?? null,
+            fileKey: result.data.assignment.fileKey ?? null,
+            points: result.data.assignment.points ?? 100,
+            dueDate: result.data.assignment.dueDate
+              ? new Date(result.data.assignment.dueDate)
+              : null,
+            lessonId: lessonId,
+          },
+          update: {
+            title: result.data.assignment.title,
+            description: result.data.assignment.description ?? null,
+            fileKey: result.data.assignment.fileKey ?? null,
+            points: result.data.assignment.points ?? 100,
+            dueDate: result.data.assignment.dueDate
+              ? new Date(result.data.assignment.dueDate)
+              : null,
+          },
+        });
+      } else {
+        // Delete assignment if title is not provided
+        await tx.assignment.deleteMany({
+          where: {
+            lessonId: lessonId,
+          },
+        });
+      }
     });
 
     return {

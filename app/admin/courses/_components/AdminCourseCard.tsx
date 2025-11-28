@@ -18,6 +18,7 @@ import {
   School,
   TimerIcon,
   Trash2,
+  Users,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -93,14 +94,26 @@ export function AdminCourseCard({ data }: iAppProps) {
           </div>
         </div>
 
-        <Link
-          className={buttonVariants({
-            className: "w-full mt-4",
-          })}
-          href={`/admin/courses/${data.id}/edit`}
-        >
-          Edit Course <ArrowRight className="size-4" />
-        </Link>
+        <div className="flex gap-2 mt-4">
+          <Link
+            className={buttonVariants({
+              className: "flex-1",
+            })}
+            href={`/admin/courses/${data.id}/edit`}
+          >
+            Edit Course <ArrowRight className="size-4 ml-2" />
+          </Link>
+          <Link
+            className={buttonVariants({
+              variant: "outline",
+              className: "flex-1",
+            })}
+            href={`/admin/courses/students?courseId=${data.id}`}
+          >
+            <Users className="size-4 mr-2" />
+            Manage Students
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );

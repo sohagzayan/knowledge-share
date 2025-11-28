@@ -3,13 +3,21 @@
 import { LessonContentType } from "@/app/data/course/get-lesson-content";
 import { RenderDescription } from "@/components/rich-text-editor/RenderDescription";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Uploader } from "@/components/file-uploader/Uploader";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { tryCatch } from "@/hooks/try-catch";
 import { useConstructUrl } from "@/hooks/use-construct-url";
-import { BookIcon, CheckCircle } from "lucide-react";
-import { useTransition } from "react";
-import { markLessonComplete } from "../actions";
+import { BookIcon, CheckCircle, FileText, Download, Calendar, Award, Upload, CheckCircle2, Clock, Link2, Edit } from "lucide-react";
+import { useTransition, useState, useEffect } from "react";
+import { markLessonComplete, submitAssignment } from "../actions";
 import { toast } from "sonner";
 import { useConfetti } from "@/hooks/use-confetti";
+import { motion } from "framer-motion";
+import { Separator } from "@/components/ui/separator";
 
 interface iAppProps {
   data: LessonContentType;
@@ -17,7 +25,48 @@ interface iAppProps {
 
 export function CourseContent({ data }: iAppProps) {
   const [pending, startTransition] = useTransition();
+  const [submissionPending, setSubmissionPending] = useTransition();
+  const [submissionFileKey, setSubmissionFileKey] = useState<string>("");
+  const [submissionLink, setSubmissionLink] = useState<string>("");
+  const [submissionDescription, setSubmissionDescription] = useState<string>("");
+  const [showEditForm, setShowEditForm] = useState<boolean>(false);
   const { triggerConfetti } = useConfetti();
+  const assignmentFileUrl = data.assignment?.fileKey
+    ? useConstructUrl(data.assignment.fileKey)
+    : null;
+  
+  const submission = data.assignment?.submissions[0];
+  const submissionFileUrl = submission?.fileKey
+    ? useConstructUrl(submission.fileKey)
+    : null;
+
+  // Check if user can edit submission
+  const canEditSubmission = !submission || submission.status === "Pending" || submission.status === "Returned";
+  // Show form only if no submission exists OR if edit button was clicked and status allows editing
+  const showSubmissionForm = !submission || (showEditForm && canEditSubmission);
+
+  // Initialize form with existing submission data when editing
+  useEffect(() => {
+    if (submission && canEditSubmission && showEditForm) {
+      // Initialize with existing submission values when edit form is shown
+      if (submission.fileKey) {
+        setSubmissionFileKey(submission.fileKey);
+      }
+      if (submission.link) {
+        setSubmissionLink(submission.link);
+      }
+      if (submission.description) {
+        setSubmissionDescription(submission.description);
+      }
+    } else if (!submission) {
+      // Reset form when no submission exists
+      setSubmissionFileKey("");
+      setSubmissionLink("");
+      setSubmissionDescription("");
+      setShowEditForm(false); // Reset edit form state
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submission?.id, canEditSubmission, showEditForm]);
 
   function VideoPlayer({
     thumbnailKey,
@@ -75,6 +124,49 @@ export function CourseContent({ data }: iAppProps) {
       }
     });
   }
+
+  function onSubmitAssignment() {
+    if (!data.assignment) {
+      toast.error("Assignment not found");
+      return;
+    }
+
+    // Validate that at least one field is provided
+    if (!submissionFileKey && !submissionLink && !submissionDescription.trim()) {
+      toast.error("Please provide at least one: file, link, or description");
+      return;
+    }
+
+    setSubmissionPending(async () => {
+      const { data: result, error } = await tryCatch(
+        submitAssignment(
+          {
+            assignmentId: data.assignment!.id,
+            fileKey: submissionFileKey || undefined,
+            link: submissionLink.trim() || undefined,
+            description: submissionDescription.trim() || undefined,
+          },
+          data.Chapter.Course.slug
+        )
+      );
+
+      if (error) {
+        toast.error("An unexpected error occurred. Please try again.");
+        return;
+      }
+
+      if (result.status === "success") {
+        toast.success(result.message);
+        // Reset form and hide it
+        setSubmissionFileKey("");
+        setSubmissionLink("");
+        setSubmissionDescription("");
+        setShowEditForm(false);
+      } else if (result.status === "error") {
+        toast.error(result.message);
+      }
+    });
+  }
   return (
     <div className="flex flex-col h-full bg-background pl-6">
       <VideoPlayer
@@ -108,6 +200,337 @@ export function CourseContent({ data }: iAppProps) {
           <RenderDescription json={JSON.parse(data.description)} />
         )}
       </div>
+
+      {data.assignment && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="pt-6"
+        >
+          <Separator className="mb-6" />
+          <Card className="border-primary/20 bg-gradient-to-br from-background/90 via-background to-background">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl">Assignment</CardTitle>
+                  <CardDescription>
+                    Complete this assignment to test your understanding
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  {data.assignment.title}
+                </h3>
+                {data.assignment.description && (
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {data.assignment.description}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-4 pt-2">
+                {data.assignment.points && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Award className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">Points:</span>
+                    <span className="font-semibold text-foreground">{data.assignment.points}</span>
+                  </div>
+                )}
+                {data.assignment.dueDate && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">Due Date:</span>
+                    <span className="font-semibold text-foreground">
+                      {new Date(data.assignment.dueDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {data.assignment.fileKey && assignmentFileUrl && (
+                <div className="pt-4">
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={() => {
+                      window.open(assignmentFileUrl, "_blank");
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Assignment File
+                  </Button>
+                </div>
+              )}
+
+              <Separator className="my-6" />
+
+              {/* Submission Status */}
+              {submission && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h4 className="text-base font-semibold text-foreground">
+                          Your Submission
+                        </h4>
+                        {canEditSubmission && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowEditForm(!showEditForm);
+                              // When opening edit form, populate with existing values
+                              if (!showEditForm && submission) {
+                                if (submission.fileKey) {
+                                  setSubmissionFileKey(submission.fileKey);
+                                }
+                                if (submission.link) {
+                                  setSubmissionLink(submission.link);
+                                }
+                                if (submission.description) {
+                                  setSubmissionDescription(submission.description);
+                                }
+                              }
+                            }}
+                            className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            {showEditForm ? "Cancel Edit" : "Edit"}
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Submitted on{" "}
+                        {new Date(submission.submittedAt).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {submission.submissionCount && submission.submissionCount > 1 && (
+                          <span className="ml-2">• Submission #{submission.submissionCount}</span>
+                        )}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={
+                        submission.status === "Graded"
+                          ? "bg-green-500/20 text-green-600 border-green-500/50"
+                          : submission.status === "Returned"
+                            ? "bg-blue-500/20 text-blue-600 border-blue-500/50"
+                            : "bg-amber-500/20 text-amber-600 border-amber-500/50"
+                      }
+                    >
+                      {submission.status === "Graded" ? (
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                      ) : submission.status === "Returned" ? (
+                        <FileText className="h-3 w-3 mr-1" />
+                      ) : (
+                        <Clock className="h-3 w-3 mr-1" />
+                      )}
+                      {submission.status}
+                    </Badge>
+                  </div>
+
+                  {/* Show submission content */}
+                  <div className="space-y-3">
+                    {submission.fileKey && submissionFileUrl && (
+                      <div>
+                        <Button
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                          onClick={() => {
+                            window.open(submissionFileUrl, "_blank");
+                          }}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          View Your Submission File
+                        </Button>
+                      </div>
+                    )}
+
+                    {submission.link && (
+                      <div>
+                        <Label className="text-sm font-semibold text-foreground mb-1 block">Submission Link:</Label>
+                        <a
+                          href={submission.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline flex items-center gap-2"
+                        >
+                          <Link2 className="h-4 w-4" />
+                          {submission.link}
+                        </a>
+                      </div>
+                    )}
+
+                    {submission.description && (
+                      <div>
+                        <Label className="text-sm font-semibold text-foreground mb-1 block">Description:</Label>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-lg">
+                          {submission.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {submission.grade !== null && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Award className="h-4 w-4 text-primary" />
+                      <span className="text-muted-foreground">Grade:</span>
+                      <span className="font-semibold text-foreground">
+                        {submission.grade} / {data.assignment.points ?? 100}
+                      </span>
+                    </div>
+                  )}
+
+                  {submission.feedback && (
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-sm font-semibold text-foreground mb-1">Feedback:</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {submission.feedback}
+                      </p>
+                    </div>
+                  )}
+
+                  {submission.status === "Graded" && (
+                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <p className="text-sm text-green-600">
+                        This submission has been graded. You cannot edit it.
+                      </p>
+                    </div>
+                  )}
+
+                  {submission.status === "Returned" && !showEditForm && (
+                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                      <p className="text-sm text-blue-600">
+                        Your submission has been returned. Click "Edit" above to resubmit.
+                      </p>
+                    </div>
+                  )}
+
+                  {submission.status === "Pending" && !showEditForm && (
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <p className="text-sm text-amber-600">
+                        Your submission is pending review. Click "Edit" above to make changes.
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Submission Form - Only show if no submission OR edit button clicked */}
+              {showSubmissionForm && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4 pt-4"
+                >
+                  <Separator className="my-6" />
+                  <div>
+                    <h4 className="text-base font-semibold text-foreground mb-2 flex items-center gap-2">
+                      {submission ? (
+                        <>
+                          <Edit className="h-4 w-4" />
+                          {submission.status === "Returned" ? "Resubmit Assignment" : "Edit Submission"}
+                        </>
+                      ) : (
+                        "Submit Your Assignment"
+                      )}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Provide at least one of the following: file upload, link, or description. All fields are optional.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* File Upload */}
+                    <div>
+                      <Label htmlFor="assignment-file" className="text-sm font-medium mb-2 block">
+                        Assignment File (Optional)
+                      </Label>
+                      <Uploader
+                        fileTypeAccepted="document"
+                        onChange={setSubmissionFileKey}
+                        value={submissionFileKey}
+                        uploadEndpoint="/api/s3/upload-submission"
+                      />
+                    </div>
+
+                    {/* Link */}
+                    <div>
+                      <Label htmlFor="assignment-link" className="text-sm font-medium mb-2 block">
+                        Assignment Link (Optional)
+                      </Label>
+                      <Input
+                        id="assignment-link"
+                        type="url"
+                        placeholder="https://example.com/assignment"
+                        value={submissionLink}
+                        onChange={(e) => setSubmissionLink(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <Label htmlFor="assignment-description" className="text-sm font-medium mb-2 block">
+                        Description (Optional)
+                      </Label>
+                      <Textarea
+                        id="assignment-description"
+                        placeholder="Describe your submission or provide additional information..."
+                        value={submissionDescription}
+                        onChange={(e) => setSubmissionDescription(e.target.value)}
+                        className="w-full min-h-[100px]"
+                        maxLength={5000}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {submissionDescription.length} / 5000 characters
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={onSubmitAssignment}
+                    disabled={submissionPending || (!submissionFileKey && !submissionLink.trim() && !submissionDescription.trim())}
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                  >
+                    {submissionPending ? (
+                      <>
+                        <Clock className="h-4 w-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {submission ? "Update Submission" : "Submit Assignment"}
+                      </>
+                    )}
+                  </Button>
+                </motion.div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
 }

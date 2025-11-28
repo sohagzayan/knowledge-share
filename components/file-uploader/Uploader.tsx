@@ -23,16 +23,17 @@ interface UploaderState {
   isDeleting: boolean;
   error: boolean;
   objectUrl?: string;
-  fileType: "image" | "video";
+  fileType: "image" | "video" | "document";
 }
 
 interface iAppProps {
   value?: string;
   onChange?: (value: string) => void;
-  fileTypeAccepted: "image" | "video";
+  fileTypeAccepted: "image" | "video" | "document";
+  uploadEndpoint?: string;
 }
 
-export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
+export function Uploader({ onChange, value, fileTypeAccepted, uploadEndpoint = "/api/s3/upload" }: iAppProps) {
   const fileUrl = useConstructUrl(value || "");
   const [fileState, setFileState] = useState<UploaderState>({
     error: false,
@@ -110,7 +111,7 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
           const formData = new FormData();
           formData.append("file", file);
 
-          xhr.open("POST", "/api/s3/upload");
+          xhr.open("POST", uploadEndpoint);
           xhr.send(formData);
         });
       } catch (error) {
@@ -125,7 +126,7 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
         }));
       }
     },
-    [onChange]
+    [onChange, uploadEndpoint]
   );
 
   const onDrop = useCallback(
@@ -270,11 +271,26 @@ export function Uploader({ onChange, value, fileTypeAccepted }: iAppProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept:
-      fileTypeAccepted === "video" ? { "video/*": [] } : { "image/*": [] },
+      fileTypeAccepted === "video"
+        ? { "video/*": [] }
+        : fileTypeAccepted === "document"
+          ? {
+              "application/pdf": [".pdf"],
+              "application/msword": [".doc"],
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+              "application/vnd.ms-excel": [".xls"],
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+              "text/plain": [".txt"],
+            }
+          : { "image/*": [] },
     maxFiles: 1,
     multiple: false,
     maxSize:
-      fileTypeAccepted === "image" ? 5 * 1024 * 1024 : 5000 * 1024 * 1024,
+      fileTypeAccepted === "image"
+        ? 5 * 1024 * 1024
+        : fileTypeAccepted === "document"
+          ? 10 * 1024 * 1024
+          : 5000 * 1024 * 1024,
     onDropRejected: rejectedFiles,
     disabled: fileState.uploading || !!fileState.objectUrl,
   });

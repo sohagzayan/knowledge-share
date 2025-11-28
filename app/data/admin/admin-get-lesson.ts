@@ -17,6 +17,16 @@ export async function adminGetLesson(id: string) {
       description: true,
       id: true,
       position: true,
+      assignment: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          fileKey: true,
+          points: true,
+          dueDate: true,
+        },
+      },
     },
   });
 

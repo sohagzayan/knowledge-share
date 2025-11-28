@@ -36,6 +36,36 @@ export async function getLessonContent(lessonId: string) {
           },
         },
       },
+      assignment: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          fileKey: true,
+          points: true,
+          dueDate: true,
+          submissions: {
+            where: {
+              userId: session.id,
+            },
+            select: {
+              id: true,
+              fileKey: true,
+              link: true,
+              description: true,
+              submissionCount: true,
+              status: true,
+              grade: true,
+              feedback: true,
+              submittedAt: true,
+            },
+            take: 1,
+            orderBy: {
+              submittedAt: "desc",
+            },
+          },
+        },
+      },
     },
   });
 

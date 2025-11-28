@@ -31,6 +31,7 @@ model User {
   courses        Course[]
   enrollment     Enrollment[]
   lessonProgress LessonProgress[]
+  assignmentSubmissions AssignmentSubmission[]
 
   stripeCustomerId String? @unique
 
@@ -182,6 +183,7 @@ model Lesson {
   chapterId String
 
   lessonProgress LessonProgress[]
+  assignment     Assignment?
 }
 
 model Enrollment {
@@ -190,6 +192,26 @@ model Enrollment {
   amount Int
   status EnrollmentStatus @default(Pending)
 
+  // Ban/Punishment fields
+  banned       Boolean?
+  banUntil     DateTime?
+  banReason    String?
+  banType      BanType?
+
+  // Follow-up and activity tracking
+  followUpEmailSent Boolean @default(false)
+  lastActivityAt    DateTime?
+
+  // Student tags/labels
+  tags StudentTag[]
+
+  // Certificate management
+  certificateEarned   Boolean   @default(false)
+  certificateIssuedAt  DateTime?
+  certificateKey       String?   @unique
+  certificateRevoked   Boolean   @default(false)
+  certificateRevokedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   Course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -197,13 +219,89 @@ model Enrollment {
   User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
 
+  // Relations
+  studentActivities StudentActivity[]
+  studentBadges     StudentBadge[]
+  loginSessions     LoginSession[]
+
   @@unique([userId, courseId])
+}
+
+enum BanType {
+  Temporary
+  Permanent
 }
 
 enum EnrollmentStatus {
   Pending
   Active
   Cancelled
+}
+
+enum StudentTag {
+  TopPerformer
+  NeedsHelp
+  SlowLearner
+  ActiveCommunicator
+}
+
+enum StudentBadgeType {
+  FirstLessonCompleted
+  SevenDayStreak
+  HundredPercentProgress
+  DiscussionContributor
+  MonthlyTopPerformer
+  WeeklyTopPerformer
+}
+
+enum ActivityType {
+  LoggedIn
+  CompletedLesson
+  DownloadedFile
+  MissedAssignment
+  SubmittedAssignment
+  ViewedLesson
+  StartedCourse
+}
+
+model StudentActivity {
+  id String @id @default(uuid())
+
+  type        ActivityType
+  description String?
+  metadata    Json? // Store additional data like lessonId, fileKey, etc.
+
+  createdAt DateTime @default(now())
+
+  Enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  enrollmentId String
+}
+
+model StudentBadge {
+  id String @id @default(uuid())
+
+  badgeType StudentBadgeType
+  earnedAt  DateTime @default(now())
+  metadata  Json? // Store additional data like streak count, etc.
+
+  Enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  enrollmentId String
+
+  @@unique([enrollmentId, badgeType])
+}
+
+model LoginSession {
+  id String @id @default(uuid())
+
+  device      String?
+  browser     String?
+  country     String?
+  ipAddress   String?
+  userAgent   String?
+  loggedInAt  DateTime @default(now())
+
+  Enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  enrollmentId String
 }
 
 model LessonProgress {
@@ -220,4 +318,50 @@ model LessonProgress {
   lessonId String
 
   @@unique([userId, lessonId])
+}
+
+model Assignment {
+  id String @id @default(uuid())
+
+  title       String
+  description String?
+  fileKey     String?
+  points      Int?      @default(100)
+  dueDate     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId String @unique
+
+  submissions AssignmentSubmission[]
+}
+
+model AssignmentSubmission {
+  id String @id @default(uuid())
+
+  fileKey        String?
+  link           String?
+  description    String?
+  submissionCount Int      @default(1)
+  status         AssignmentSubmissionStatus @default(Pending)
+  grade          Int?
+  feedback       String?
+  submittedAt    DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  Assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId String
+
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@unique([userId, assignmentId])
+}
+
+enum AssignmentSubmissionStatus {
+  Pending
+  Graded
+  Returned
 }
