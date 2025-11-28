@@ -1,4 +1,7 @@
 import { requireAdmin } from "@/app/data/admin/require-admin";
+import { EarningsCards } from "./_components/EarningsCards";
+import { WithdrawalSection } from "./_components/WithdrawalSection";
+import { WithdrawalHistoryTable } from "./_components/WithdrawalHistoryTable";
 
 export default async function WithdrawalsPage() {
   await requireAdmin();
@@ -12,10 +15,9 @@ export default async function WithdrawalsPage() {
         </p>
       </div>
 
-      <div className="rounded-3xl border border-border/60 bg-background shadow-lg shadow-black/5 p-6">
-        <p className="text-muted-foreground">Withdrawals content will be displayed here.</p>
-      </div>
+      <EarningsCards />
+      <WithdrawalSection />
+      <WithdrawalHistoryTable />
     </div>
   );
 }
-
