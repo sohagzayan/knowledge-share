@@ -11,13 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { tryCatch } from "@/hooks/try-catch";
 import { useConstructUrl } from "@/hooks/use-construct-url";
-import { BookIcon, CheckCircle, FileText, Download, Calendar, Award, Upload, CheckCircle2, Clock, Link2, Edit } from "lucide-react";
+import { BookIcon, CheckCircle, FileText, Download, Calendar, Award, Upload, CheckCircle2, Clock, Link2, Edit, ChevronLeft, ChevronRight, Lock, Coins, AlertCircle } from "lucide-react";
 import { useTransition, useState, useEffect } from "react";
 import { markLessonComplete, submitAssignment } from "../actions";
 import { toast } from "sonner";
 import { useConfetti } from "@/hooks/use-confetti";
 import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
+import Link from "next/link";
+import { LessonCountdown } from "./LessonCountdown";
 
 interface iAppProps {
   data: LessonContentType;
@@ -162,33 +164,110 @@ export function CourseContent({ data }: iAppProps) {
         setSubmissionLink("");
         setSubmissionDescription("");
         setShowEditForm(false);
+        // Refresh the page to update lock status
+        window.location.reload();
       } else if (result.status === "error") {
         toast.error(result.message);
       }
     });
   }
+  // Check if lesson is scheduled (has future releaseAt and not early-unlocked)
+  const isScheduled = 
+    data.releaseAt && 
+    new Date(data.releaseAt) > new Date() && 
+    !(data as any).isEarlyUnlocked;
+  const releaseAt = data.releaseAt ? new Date(data.releaseAt) : null;
+
   return (
     <div className="flex flex-col h-full bg-background pl-6">
-      <VideoPlayer
-        thumbnailKey={data.thumbnailKey ?? ""}
-        videoKey={data.videoKey ?? ""}
-      />
+      {isScheduled && releaseAt && (
+        <div className="mb-4">
+          <LessonCountdown
+            lessonId={data.id}
+            releaseAt={releaseAt}
+            slug={data.Chapter.Course.slug}
+            userPoints={data.userPoints}
+            onUnlock={() => window.location.reload()}
+          />
+        </div>
+      )}
+      {!isScheduled && (
+        <VideoPlayer
+          thumbnailKey={data.thumbnailKey ?? ""}
+          videoKey={data.videoKey ?? ""}
+        />
+      )}
 
-      <div className="py-4 border-b">
-        {data.lessonProgress.length > 0 ? (
-          <Button
-            variant="outline"
-            className="bg-green-500/10 text-green-500 hover:text-green-600"
-          >
-            <CheckCircle className="size-4 mr-2 text-green-500" />
-            Completed
-          </Button>
-        ) : (
-          <Button variant="outline" onClick={onSubmit} disabled={pending}>
-            <CheckCircle className="size-4 mr-2 text-green-500" />
-            Mark as Complete
-          </Button>
-        )}
+      {isScheduled && (
+        <div className="aspect-video bg-muted rounded-lg flex flex-col items-center justify-center border-2 border-dashed">
+          <Lock className="size-16 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground text-center px-4">
+            This lesson will be available when it releases. Unlock it early with points above.
+          </p>
+        </div>
+      )}
+
+      <div className="py-4 border-b flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          {data.previousLesson ? (
+            <Link href={`/dashboard/${data.Chapter.Course.slug}/${data.previousLesson.id}`}>
+              <Button variant="outline" size="sm" className="gap-2">
+                <ChevronLeft className="size-4" />
+                Previous
+              </Button>
+            </Link>
+          ) : (
+            <Button variant="outline" size="sm" disabled className="gap-2">
+              <ChevronLeft className="size-4" />
+              Previous
+            </Button>
+          )}
+          {data.nextLesson ? (
+            data.nextLesson.locked ? (
+              <Button variant="outline" size="sm" disabled className="gap-2">
+                <Lock className="size-4" />
+                Next (Locked)
+                {data.assignmentRequired && (
+                  <span className="text-xs ml-1">- Submit Assignment</span>
+                )}
+              </Button>
+            ) : (
+              <Link href={`/dashboard/${data.Chapter.Course.slug}/${data.nextLesson.id}`}>
+                <Button variant="outline" size="sm" className="gap-2">
+                  Next
+                  <ChevronRight className="size-4" />
+                </Button>
+              </Link>
+            )
+          ) : (
+            <Button variant="outline" size="sm" disabled className="gap-2">
+              Next
+              <ChevronRight className="size-4" />
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {data.lessonProgress.length > 0 ? (
+            <Button
+              variant="outline"
+              className="bg-green-500/10 text-green-500 hover:text-green-600"
+            >
+              <CheckCircle className="size-4 mr-2 text-green-500" />
+              Completed
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={onSubmit} disabled={pending}>
+              <CheckCircle className="size-4 mr-2 text-green-500" />
+              Mark as Complete (+3 pts)
+            </Button>
+          )}
+          {/* Points Display */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20">
+            <Coins className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold text-primary">{data.userPoints || 0}</span>
+            <span className="text-xs text-muted-foreground">points</span>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-3 pt-3">
@@ -209,16 +288,41 @@ export function CourseContent({ data }: iAppProps) {
           className="pt-6"
         >
           <Separator className="mb-6" />
-          <Card className="border-primary/20 bg-gradient-to-br from-background/90 via-background to-background">
+          <Card className={`border-primary/20 bg-gradient-to-br from-background/90 via-background to-background ${
+            data.assignmentRequired ? "ring-2 ring-amber-500/50" : ""
+          }`}>
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <FileText className="h-5 w-5" />
                 </div>
-                <div>
-                  <CardTitle className="text-2xl">Assignment</CardTitle>
-                  <CardDescription>
-                    Complete this assignment to test your understanding
+                <div className="flex-1">
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    Assignment
+                    {data.assignmentRequired && (
+                      <Badge variant="destructive" className="text-xs">
+                        Required
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-2">
+                    {data.assignmentRequired 
+                      ? "You must submit this assignment to proceed to the next lesson"
+                      : "Complete this assignment to test your understanding"}
+                    {submission && (
+                      <span className="text-xs text-muted-foreground">
+                        • Submit: +6 points
+                        {data.assignment.dueDate && new Date() > new Date(data.assignment.dueDate) && !submission && (
+                          <span className="text-amber-600 dark:text-amber-400"> • Late: -5 points</span>
+                        )}
+                        {submission.status === "Graded" && (
+                          <span className="text-amber-600 dark:text-amber-400"> • Resubmit: -10 points</span>
+                        )}
+                        {(submission.status === "Returned" || submission.status === "Pending") && (
+                          <span className="text-amber-600 dark:text-amber-400"> • Edit: -3 points</span>
+                        )}
+                      </span>
+                    )}
                   </CardDescription>
                 </div>
               </div>
@@ -506,6 +610,58 @@ export function CourseContent({ data }: iAppProps) {
                         {submissionDescription.length} / 5000 characters
                       </p>
                     </div>
+
+                    {/* Points Info */}
+                    {(() => {
+                      const isPastDue = data.assignment.dueDate && new Date() > new Date(data.assignment.dueDate);
+                      const isResubmission = !!submission;
+                      const isEdit = isResubmission && (submission.status === "Returned" || submission.status === "Pending");
+                      const isAfterGraded = isResubmission && submission.status === "Graded";
+
+                      let pointsNeeded = 0;
+                      let pointsEarned = 0;
+                      if (isPastDue && !submission) {
+                        pointsNeeded = 5;
+                      } else if (isAfterGraded) {
+                        pointsNeeded = 10;
+                      } else if (isEdit) {
+                        pointsNeeded = 3;
+                      } else if (!submission) {
+                        pointsEarned = 6;
+                      }
+
+                      if (pointsNeeded > 0 || pointsEarned > 0) {
+                        return (
+                          <div className={`p-3 rounded-lg border flex items-center gap-2 ${
+                            pointsNeeded > 0 
+                              ? "bg-amber-500/10 border-amber-500/20" 
+                              : "bg-green-500/10 border-green-500/20"
+                          }`}>
+                            {pointsNeeded > 0 ? (
+                              <>
+                                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                <div className="flex-1">
+                                  <div className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                                    Points Required: {pointsNeeded}
+                                  </div>
+                                  <div className="text-xs text-amber-600 dark:text-amber-500">
+                                    Your Points: {data.userPoints || 0}
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <Coins className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                <div className="text-xs font-medium text-green-700 dark:text-green-400">
+                                  You will earn {pointsEarned} points upon submission
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   <Button
@@ -531,6 +687,70 @@ export function CourseContent({ data }: iAppProps) {
           </Card>
         </motion.div>
       )}
+
+      {/* Navigation Buttons at Bottom */}
+      <div className="mt-8 pt-6 border-t">
+        <div className="flex items-center justify-between gap-4">
+          {data.previousLesson ? (
+            <Link href={`/dashboard/${data.Chapter.Course.slug}/${data.previousLesson.id}`}>
+              <motion.div
+                whileHover={{ x: -4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Button variant="outline" className="w-full sm:w-auto gap-2">
+                  <ChevronLeft className="size-4" />
+                  <div className="text-left">
+                    <div className="text-xs text-muted-foreground">Previous Lesson</div>
+                    <div className="font-medium">{data.previousLesson.title}</div>
+                  </div>
+                </Button>
+              </motion.div>
+            </Link>
+          ) : (
+            <div className="flex-1" />
+          )}
+          {data.nextLesson ? (
+            data.nextLesson.locked ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="ml-auto"
+              >
+                <Button variant="outline" disabled className="w-full sm:w-auto gap-2 opacity-60">
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Next Lesson</div>
+                    <div className="font-medium">{data.nextLesson.title}</div>
+                    {data.assignmentRequired && (
+                      <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        Submit assignment to unlock
+                      </div>
+                    )}
+                  </div>
+                  <Lock className="size-4" />
+                </Button>
+              </motion.div>
+            ) : (
+              <Link href={`/dashboard/${data.Chapter.Course.slug}/${data.nextLesson.id}`}>
+                <motion.div
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="ml-auto"
+                >
+                  <Button variant="default" className="w-full sm:w-auto gap-2">
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">Next Lesson</div>
+                      <div className="font-medium">{data.nextLesson.title}</div>
+                    </div>
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </motion.div>
+              </Link>
+            )
+          ) : (
+            <div className="flex-1" />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -17,6 +17,8 @@ export async function adminGetLesson(id: string) {
       description: true,
       id: true,
       position: true,
+      status: true,
+      releaseAt: true,
       assignment: {
         select: {
           id: true,

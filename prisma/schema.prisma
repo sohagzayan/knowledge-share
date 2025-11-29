@@ -9,79 +9,74 @@ datasource db {
 }
 
 model User {
-  id             String           @id
-  firstName      String
-  lastName       String?
-  email          String
-  username       String?
-  phoneNumber    String?
-  designation    String?
-  bio            String?
-  socialWebsite   String?
-  socialGithub    String?
-  socialFacebook  String?
-  socialTwitter   String?
-  socialLinkedin  String?
-  emailVerified  Boolean
-  image          String?
-  createdAt      DateTime
-  updatedAt      DateTime
-  sessions       Session[]
-  accounts       Account[]
-  courses        Course[]
-  enrollment     Enrollment[]
-  lessonProgress LessonProgress[]
+  id                    String                 @id
+  firstName             String
+  lastName              String?
+  email                 String                 @unique
+  username              String?                @unique
+  phoneNumber           String?
+  designation           String?
+  bio                   String?
+  socialWebsite         String?
+  socialGithub          String?
+  socialFacebook        String?
+  socialTwitter         String?
+  socialLinkedin        String?
+  emailVerified         Boolean
+  image                 String?
+  createdAt             DateTime
+  updatedAt             DateTime
+  stripeCustomerId      String?                @unique
+  role                  String?
+  banned                Boolean?
+  banReason             String?
+  banExpires            DateTime?
+  points                Int                    @default(0)
   assignmentSubmissions AssignmentSubmission[]
+  billingAddress        BillingAddress?
+  courses               Course[]
+  earlyUnlocks          EarlyUnlock[]
+  enrollment            Enrollment[]
+  lessonProgress        LessonProgress[]
+  accounts              Account[]
+  sessions              Session[]
 
-  stripeCustomerId String? @unique
-
-  role       String?
-  banned     Boolean?
-  banReason  String?
-  banExpires DateTime?
-  billingAddress BillingAddress?
-
-  @@unique([email])
-  @@unique([username])
   @@map("user")
 }
 
 model BillingAddress {
-  id            String   @id @default(uuid())
-  firstName     String
-  lastName      String
-  companyName   String?
-  phoneNumber   String?
-  email         String
-  addressLine1  String
-  addressLine2  String?
-  city          String
-  state         String
-  postalCode    String
-  country       String
-  vatNumber     String?
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String @unique
+  id           String   @id @default(uuid())
+  firstName    String
+  lastName     String
+  companyName  String?
+  phoneNumber  String?
+  email        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String
+  vatNumber    String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime
-  updatedAt DateTime
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  id             String   @id
+  expiresAt      DateTime
+  token          String   @unique
+  createdAt      DateTime
+  updatedAt      DateTime
+  ipAddress      String?
+  userAgent      String?
+  userId         String
   impersonatedBy String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([token])
   @@map("session")
 }
 
@@ -90,7 +85,6 @@ model Account {
   accountId             String
   providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -100,6 +94,7 @@ model Account {
   password              String?
   createdAt             DateTime
   updatedAt             DateTime
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("account")
 }
@@ -116,30 +111,181 @@ model Verification {
 }
 
 model Course {
-  id String @id @default(uuid())
-
-  title       String
-  description String
-  fileKey     String
-  price       Int
-  duration    Int
-  level       CourseLevel @default(Beginner)
-
-  stripePriceId String @unique
-
+  id               String       @id @default(uuid())
+  title            String
+  description      String
+  fileKey          String
+  price            Int
+  duration         Int
+  level            CourseLevel  @default(Beginner)
+  stripePriceId    String       @unique
   category         String
   smallDescription String
-  slug             String @unique
+  slug             String       @unique
+  status           CourseStatus @default(Draft)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  userId           String
+  chapter          Chapter[]
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollment       Enrollment[]
+}
 
-  status CourseStatus @default(Draft)
+model Chapter {
+  id           String        @id @default(uuid())
+  title        String
+  position     Int
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  courseId     String
+  releaseAt    DateTime?
+  status       ChapterStatus @default(Draft)
+  Course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  earlyUnlocks EarlyUnlock[]
+  lessons      Lesson[]
+}
 
+model Lesson {
+  id             String           @id @default(uuid())
+  title          String
+  description    String?
+  thumbnailKey   String?
+  videoKey       String?
+  position       Int
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  chapterId      String
+  assignment     Assignment?
+  Chapter        Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  lessonProgress LessonProgress[]
+  earlyUnlocks   EarlyUnlock[]
+  // Publish / visibility status
+  status         LessonStatus     @default(Draft)
+  // Optional scheduled publish time (used when status = Scheduled)
+  releaseAt      DateTime?
+}
+
+model Enrollment {
+  id                   String            @id @default(uuid())
+  amount               Int
+  status               EnrollmentStatus  @default(Pending)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  courseId             String
+  userId               String
+  banReason            String?
+  banType              BanType?
+  banUntil             DateTime?
+  banned               Boolean?
+  followUpEmailSent    Boolean           @default(false)
+  lastActivityAt       DateTime?
+  certificateEarned    Boolean           @default(false)
+  certificateIssuedAt  DateTime?
+  certificateKey       String?           @unique
+  certificateRevoked   Boolean           @default(false)
+  certificateRevokedAt DateTime?
+  tags                 StudentTag[]
+  Course               Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  User                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loginSessions        LoginSession[]
+  studentActivities    StudentActivity[]
+  studentBadges        StudentBadge[]
+
+  @@unique([userId, courseId])
+}
+
+model StudentActivity {
+  id           String       @id @default(uuid())
+  type         ActivityType
+  description  String?
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+  enrollmentId String
+  Enrollment   Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+}
+
+model StudentBadge {
+  id           String           @id @default(uuid())
+  badgeType    StudentBadgeType
+  earnedAt     DateTime         @default(now())
+  metadata     Json?
+  enrollmentId String
+  Enrollment   Enrollment       @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, badgeType])
+}
+
+model LoginSession {
+  id           String     @id @default(uuid())
+  device       String?
+  browser      String?
+  country      String?
+  ipAddress    String?
+  userAgent    String?
+  loggedInAt   DateTime   @default(now())
+  enrollmentId String
+  Enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+}
+
+model EarlyUnlock {
+  id          String   @id @default(uuid())
+  unlockedAt  DateTime @default(now())
+  pointsSpent Int
+
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  Chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  chapterId String?
+  Lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String?
+
+  @@unique([userId, chapterId, lessonId])
+}
+
+model LessonProgress {
+  id        String   @id @default(uuid())
+  completed Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
+  lessonId  String
+  Lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  chapter    Chapter[]
-  enrollment Enrollment[]
+  @@unique([userId, lessonId])
+}
+
+model Assignment {
+  id          String                 @id @default(uuid())
+  title       String
+  description String?
+  fileKey     String?
+  points      Int?                   @default(100)
+  dueDate     DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  lessonId    String                 @unique
+  Lesson      Lesson                 @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+}
+
+model AssignmentSubmission {
+  id              String                     @id @default(uuid())
+  fileKey         String?
+  status          AssignmentSubmissionStatus @default(Pending)
+  grade           Int?
+  feedback        String?
+  submittedAt     DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  assignmentId    String
+  userId          String
+  description     String?
+  link            String?
+  submissionCount Int                        @default(1)
+  Assignment      Assignment                 @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  User            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assignmentId])
 }
 
 enum CourseLevel {
@@ -152,79 +298,6 @@ enum CourseStatus {
   Draft
   Published
   Archived
-}
-
-model Chapter {
-  id String @id @default(uuid())
-
-  title    String
-  position Int
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId  String
-
-  lessons Lesson[]
-}
-
-model Lesson {
-  id String @id @default(uuid())
-
-  title        String
-  description  String?
-  thumbnailKey String?
-  videoKey     String?
-  position     Int
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  chapterId String
-
-  lessonProgress LessonProgress[]
-  assignment     Assignment?
-}
-
-model Enrollment {
-  id String @id @default(uuid())
-
-  amount Int
-  status EnrollmentStatus @default(Pending)
-
-  // Ban/Punishment fields
-  banned       Boolean?
-  banUntil     DateTime?
-  banReason    String?
-  banType      BanType?
-
-  // Follow-up and activity tracking
-  followUpEmailSent Boolean @default(false)
-  lastActivityAt    DateTime?
-
-  // Student tags/labels
-  tags StudentTag[]
-
-  // Certificate management
-  certificateEarned   Boolean   @default(false)
-  certificateIssuedAt  DateTime?
-  certificateKey       String?   @unique
-  certificateRevoked   Boolean   @default(false)
-  certificateRevokedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId  String
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-
-  // Relations
-  studentActivities StudentActivity[]
-  studentBadges     StudentBadge[]
-  loginSessions     LoginSession[]
-
-  @@unique([userId, courseId])
 }
 
 enum BanType {
@@ -264,104 +337,20 @@ enum ActivityType {
   StartedCourse
 }
 
-model StudentActivity {
-  id String @id @default(uuid())
-
-  type        ActivityType
-  description String?
-  metadata    Json? // Store additional data like lessonId, fileKey, etc.
-
-  createdAt DateTime @default(now())
-
-  Enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  enrollmentId String
-}
-
-model StudentBadge {
-  id String @id @default(uuid())
-
-  badgeType StudentBadgeType
-  earnedAt  DateTime @default(now())
-  metadata  Json? // Store additional data like streak count, etc.
-
-  Enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  enrollmentId String
-
-  @@unique([enrollmentId, badgeType])
-}
-
-model LoginSession {
-  id String @id @default(uuid())
-
-  device      String?
-  browser     String?
-  country     String?
-  ipAddress   String?
-  userAgent   String?
-  loggedInAt  DateTime @default(now())
-
-  Enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  enrollmentId String
-}
-
-model LessonProgress {
-  id String @id @default(uuid())
-
-  completed Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  User     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId   String
-  Lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  lessonId String
-
-  @@unique([userId, lessonId])
-}
-
-model Assignment {
-  id String @id @default(uuid())
-
-  title       String
-  description String?
-  fileKey     String?
-  points      Int?      @default(100)
-  dueDate     DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  Lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  lessonId String @unique
-
-  submissions AssignmentSubmission[]
-}
-
-model AssignmentSubmission {
-  id String @id @default(uuid())
-
-  fileKey        String?
-  link           String?
-  description    String?
-  submissionCount Int      @default(1)
-  status         AssignmentSubmissionStatus @default(Pending)
-  grade          Int?
-  feedback       String?
-  submittedAt    DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  Assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  assignmentId String
-
-  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String
-
-  @@unique([userId, assignmentId])
-}
-
 enum AssignmentSubmissionStatus {
   Pending
   Graded
   Returned
+}
+
+enum LessonStatus {
+  Draft
+  Scheduled
+  Published
+}
+
+enum ChapterStatus {
+  Draft
+  Scheduled
+  Published
 }

@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { chapterSchema, ChapterSchemaType } from "@/lib/zodSchemas";
+import { chapterSchema, ChapterSchemaType, chapterStatus } from "@/lib/zodSchemas";
 import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { tryCatch } from "@/hooks/try-catch";
 import { createChapter } from "../actions";
 import { toast } from "sonner";
@@ -35,6 +36,8 @@ export function NewChapterModal({ courseId }: { courseId: string }) {
     defaultValues: {
       name: "",
       courseId: courseId,
+      status: "Draft",
+      releaseAt: "",
     },
   });
 
@@ -89,6 +92,52 @@ export function NewChapterModal({ courseId }: { courseId: string }) {
                   <FormLabel>Name</FormLabel>
                   <FormControl>
                     <Input placeholder="Chapter Name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chapterStatus.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="releaseAt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Schedule Time (optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="datetime-local"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

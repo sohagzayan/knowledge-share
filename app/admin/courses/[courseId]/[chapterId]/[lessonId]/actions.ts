@@ -31,6 +31,10 @@ export async function updateLesson(
           description: result.data.description,
           thumbnailKey: result.data.thumbnailKey,
           videoKey: result.data.videoKey,
+          status: result.data.status ?? "Draft",
+          releaseAt: result.data.releaseAt
+            ? new Date(result.data.releaseAt)
+            : null,
         },
       });
 

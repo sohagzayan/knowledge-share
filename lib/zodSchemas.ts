@@ -4,6 +4,10 @@ export const courseLevels = ["Beginner", "Intermediate", "Advanced"] as const;
 
 export const courseStatus = ["Draft", "Published", "Archived"] as const;
 
+export const chapterStatus = ["Draft", "Scheduled", "Published"] as const;
+
+export const lessonStatus = ["Draft", "Scheduled", "Published"] as const;
+
 export const courseCategories = [
   "Development",
   "Business",
@@ -65,6 +69,14 @@ export const chapterSchema = z.object({
     .string()
     .min(3, { message: "Name must be at least 3 characters long" }),
   courseId: z.string().uuid({ message: "Invalid course id" }),
+  status: z
+    .enum(chapterStatus)
+    .optional()
+    .default("Draft"),
+  releaseAt: z
+    .string()
+    .optional()
+    .or(z.literal("")),
 });
 
 export const assignmentSchema = z.object({
@@ -93,6 +105,14 @@ export const lessonSchema = z.object({
   videoKey: z.string().optional(),
   thumbnailKey: z.string().optional(),
   assignment: assignmentSchema.optional(),
+  status: z
+    .enum(lessonStatus)
+    .optional()
+    .default("Draft"),
+  releaseAt: z
+    .string()
+    .optional()
+    .or(z.literal("")),
 });
 
 export const assignmentSubmissionSchema = z.object({

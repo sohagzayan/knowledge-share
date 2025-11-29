@@ -26,7 +26,14 @@ export async function getCourseSidebarData(slug: string) {
           id: true,
           title: true,
           position: true,
+          releaseAt: true,
           lessons: {
+            // Students should not see draft lessons; only Scheduled or Published
+            where: {
+              status: {
+                in: ["Scheduled", "Published"],
+              },
+            },
             orderBy: {
               position: "asc",
             },
@@ -35,6 +42,8 @@ export async function getCourseSidebarData(slug: string) {
               title: true,
               position: true,
               description: true,
+              status: true,
+              releaseAt: true,
               lessonProgress: {
                 where: {
                   userId: session.id,
@@ -68,8 +77,182 @@ export async function getCourseSidebarData(slug: string) {
     return notFound();
   }
 
+  // Get user's points and early unlocks
+  const user = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: { 
+      points: true,
+      earlyUnlocks: {
+        select: {
+          chapterId: true,
+          lessonId: true,
+        },
+      },
+    },
+  });
+
+  const earlyUnlockedChapterIds = new Set(
+    (user?.earlyUnlocks || [])
+      .map((eu) => eu.chapterId)
+      .filter((id): id is string => !!id)
+  );
+  const earlyUnlockedLessonIds = new Set(
+    (user?.earlyUnlocks || [])
+      .map((eu) => eu.lessonId)
+      .filter((id): id is string => !!id)
+  );
+
+  // Get all lesson progress for the user
+  const allLessonProgress = await prisma.lessonProgress.findMany({
+    where: {
+      userId: session.id,
+      lessonId: {
+        in: course.chapter.flatMap((ch) => ch.lessons.map((l) => l.id)),
+      },
+      completed: true,
+    },
+    select: {
+      lessonId: true,
+    },
+  });
+
+  const completedLessonIds = new Set(allLessonProgress.map((lp) => lp.lessonId));
+
+  // Get all assignments and their submissions for the user
+  const allLessonsWithAssignments = await prisma.lesson.findMany({
+    where: {
+      Chapter: {
+        courseId: course.id,
+      },
+      assignment: {
+        isNot: null,
+      },
+    },
+    select: {
+      id: true,
+      assignment: {
+        select: {
+          submissions: {
+            where: { userId: session.id },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+
+  // Create a map of lessons that have assignments and whether they're submitted
+  const assignmentSubmissionMap = new Map<string, boolean>();
+  allLessonsWithAssignments.forEach((lesson) => {
+    const hasSubmission = lesson.assignment?.submissions && lesson.assignment.submissions.length > 0;
+    assignmentSubmissionMap.set(lesson.id, !!hasSubmission);
+  });
+
+  // Mark lessons as locked/unlocked based on previous lesson completion
+  const courseWithLocks = {
+    ...course,
+      chapter: course.chapter.map((chapter, chapterIndex) => {
+      let previousChapterAllCompleted = true;
+      
+      // Check if all previous chapters are completed AND assignments submitted
+      if (chapterIndex > 0) {
+        for (let i = 0; i < chapterIndex; i++) {
+          const prevChapter = course.chapter[i];
+          const allPrevLessonsCompleted = prevChapter.lessons.every((l) => {
+            const isCompleted = completedLessonIds.has(l.id);
+            const hasAssignment = assignmentSubmissionMap.has(l.id);
+            const assignmentSubmitted = hasAssignment 
+              ? assignmentSubmissionMap.get(l.id) 
+              : true; // If no assignment, consider it "submitted"
+            return isCompleted && (!hasAssignment || assignmentSubmitted);
+          });
+          if (!allPrevLessonsCompleted) {
+            previousChapterAllCompleted = false;
+            break;
+          }
+        }
+      }
+
+      // Check if chapter is released (releaseAt is null or in the past)
+      // Or if user has unlocked it early
+      const isChapterReleased =
+        !chapter.releaseAt || new Date(chapter.releaseAt) <= new Date();
+      const isEarlyUnlocked = earlyUnlockedChapterIds.has(chapter.id);
+      const isChapterAccessible = isChapterReleased || isEarlyUnlocked;
+
+      return {
+        ...chapter,
+        locked: !previousChapterAllCompleted,
+        releaseAt: chapter.releaseAt,
+        isEarlyUnlocked,
+        lessons: chapter.lessons.map((lesson, lessonIndex) => {
+          // First lesson of first chapter is always unlocked at progression level
+          let progressionLocked = false;
+          if (chapterIndex === 0 && lessonIndex === 0) {
+            progressionLocked = false;
+          } else if (lessonIndex > 0) {
+            // Check if previous lesson in same chapter is completed AND assignment submitted
+            const previousLesson = chapter.lessons[lessonIndex - 1];
+            const isPreviousCompleted = completedLessonIds.has(previousLesson.id);
+            const previousHasAssignment = assignmentSubmissionMap.has(previousLesson.id);
+            const previousAssignmentSubmitted = previousHasAssignment 
+              ? assignmentSubmissionMap.get(previousLesson.id) 
+              : true; // If no assignment, consider it "submitted"
+            
+            // Lesson is locked if previous is not completed OR if previous has assignment that's not submitted
+            progressionLocked =
+              !isPreviousCompleted ||
+              (previousHasAssignment && !previousAssignmentSubmitted);
+          } else if (chapterIndex > 0) {
+            // First lesson of a chapter - check if last lesson of previous chapter is completed AND assignment submitted
+            const previousChapter = course.chapter[chapterIndex - 1];
+            const lastLessonOfPrevChapter =
+              previousChapter.lessons[previousChapter.lessons.length - 1];
+
+            // If previous chapter has no lessons, don't lock based on it
+            if (!lastLessonOfPrevChapter) {
+              progressionLocked = false;
+            } else {
+              const isLastLessonCompleted = completedLessonIds.has(
+                lastLessonOfPrevChapter.id
+              );
+              const lastLessonHasAssignment = assignmentSubmissionMap.has(
+                lastLessonOfPrevChapter.id
+              );
+              const lastLessonAssignmentSubmitted = lastLessonHasAssignment
+                ? assignmentSubmissionMap.get(lastLessonOfPrevChapter.id)
+                : true;
+
+              progressionLocked =
+                !isLastLessonCompleted ||
+                (lastLessonHasAssignment && !lastLessonAssignmentSubmitted);
+            }
+          }
+
+          // Check time-based lock (schedule time)
+          const isLessonReleased =
+            !lesson.releaseAt || new Date(lesson.releaseAt) <= new Date();
+          const isLessonEarlyUnlocked = earlyUnlockedLessonIds.has(lesson.id);
+          const isTimeLocked = !!lesson.releaseAt && !isLessonReleased && !isLessonEarlyUnlocked;
+
+          // Lesson is locked if progression-locked OR time-locked
+          const isLocked = progressionLocked || isTimeLocked;
+
+          return {
+            ...lesson,
+            locked: isLocked,
+            isEarlyUnlocked: isLessonEarlyUnlocked,
+            isTimeLocked: isTimeLocked,
+          };
+        }),
+      };
+    }),
+  };
+
   return {
-    course,
+    course: courseWithLocks,
+    userPoints: user?.points || 0,
   };
 }
 

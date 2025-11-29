@@ -102,6 +102,10 @@ export async function createChapter(
         title: result.data.name,
         courseId: result.data.courseId,
         position: (maxPosition?.position ?? -1) + 1,
+        status: result.data.status ?? "Draft",
+        releaseAt: result.data.releaseAt
+          ? new Date(result.data.releaseAt)
+          : null,
       },
     });
 
@@ -156,6 +160,10 @@ export async function createLesson(
           videoKey: result.data.videoKey,
           chapterId: result.data.chapterId,
           position: (maxPosition?.position ?? -1) + 1,
+          status: result.data.status ?? "Draft",
+          releaseAt: result.data.releaseAt
+            ? new Date(result.data.releaseAt)
+            : null,
         },
       });
 
@@ -192,12 +200,13 @@ export async function createLesson(
 }
 
 export async function deleteChapter(
-  chapterId: string,
-  courseId: string
+  params: { chapterId: string; courseId: string }
 ): Promise<ApiResponse> {
   await requireAdmin();
 
   try {
+    const { chapterId, courseId } = params;
+
     await prisma.chapter.delete({
       where: {
         id: chapterId,
@@ -219,12 +228,13 @@ export async function deleteChapter(
 }
 
 export async function deleteLesson(
-  lessonId: string,
-  courseId: string
+  params: { lessonId: string; courseId: string; chapterId?: string }
 ): Promise<ApiResponse> {
   await requireAdmin();
 
   try {
+    const { lessonId, courseId } = params;
+
     await prisma.lesson.delete({
       where: {
         id: lessonId,
