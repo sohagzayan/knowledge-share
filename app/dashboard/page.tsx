@@ -4,6 +4,7 @@ import { getEnrolledCourses } from "../data/user/get-enrolled-courses";
 import { requireUser } from "../data/user/require-user";
 import { PublicCourseCard } from "../(public)/_components/PublicCourseCard";
 import { prisma } from "@/lib/db";
+import { getActiveSupportCallsByCourse } from "../data/course/support-calls";
 
 import { CourseProgressCard } from "./_components/CourseProgressCard";
 import { DashboardStats } from "./_components/DashboardStats";
@@ -76,7 +77,11 @@ export default async function DashboardPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {enrolledCourses.map((course) => (
-            <CourseProgressCard key={course.Course.id} data={course} />
+            <CourseProgressCard 
+              key={course.Course.id} 
+              data={course} 
+              courseId={course.Course.id}
+            />
           ))}
         </div>
       )}

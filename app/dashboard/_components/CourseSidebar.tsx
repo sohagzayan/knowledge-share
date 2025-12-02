@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { ChevronDown, Play, Lock, Coins } from "lucide-react";
 import { LessonItem } from "./LessonItem";
 import { usePathname } from "next/navigation";
@@ -19,9 +20,10 @@ import { ChapterCountdown } from "./ChapterCountdown";
 interface iAppProps {
   course: CourseSidebarDataType["course"];
   userPoints?: number;
+  userId?: string;
 }
 
-export function CourseSidebar({ course, userPoints = 0 }: iAppProps) {
+export function CourseSidebar({ course, userPoints = 0, userId }: iAppProps) {
   const pathname = usePathname();
   const currentLessonId = pathname.split("/").pop();
   const slug = pathname.split("/")[2];

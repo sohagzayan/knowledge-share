@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
     remotePatterns,
   },
 
+  transpilePackages: ["@stream-io/video-react-sdk"],
+
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.plugins = [...config.plugins, new PrismaPlugin()];

@@ -41,6 +41,8 @@ model User {
   lessonProgress        LessonProgress[]
   accounts              Account[]
   sessions              Session[]
+  supportCallsCreated   SupportCall[]          @relation("SupportCallCreator")
+  supportCallRequests   SupportCallRequest[]   @relation("SupportCallRequestUser")
 
   @@map("user")
 }
@@ -112,24 +114,25 @@ model Verification {
 }
 
 model Course {
-  id               String       @id @default(uuid())
+  id               String        @id @default(uuid())
   title            String
   description      String
   fileKey          String
   price            Int
   duration         Int
-  level            CourseLevel  @default(Beginner)
-  stripePriceId    String       @unique
+  level            CourseLevel   @default(Beginner)
+  stripePriceId    String        @unique
   category         String
   smallDescription String
-  slug             String       @unique
-  status           CourseStatus @default(Draft)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  slug             String        @unique
+  status           CourseStatus  @default(Draft)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
   userId           String
   chapter          Chapter[]
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   enrollment       Enrollment[]
+  supportCalls     SupportCall[]
 }
 
 model Chapter {
@@ -399,4 +402,52 @@ enum ChapterStatus {
   Draft
   Scheduled
   Published
+}
+
+model SupportCall {
+  id           String               @id @default(uuid())
+  courseId     String
+  createdBy    String // Admin user ID
+  streamCallId String?              @unique // Stream.io call ID
+  title        String?
+  description  String?
+  status       SupportCallStatus    @default(Active)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  endedAt      DateTime?
+  Course       Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  Creator      User                 @relation("SupportCallCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  requests     SupportCallRequest[]
+
+  @@map("support_call")
+}
+
+model SupportCallRequest {
+  id            String               @id @default(uuid())
+  supportCallId String
+  userId        String
+  supportType   String // What type of support student needs
+  status        SupportRequestStatus @default(Pending)
+  position      Int // Queue position
+  joinedAt      DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  SupportCall   SupportCall          @relation(fields: [supportCallId], references: [id], onDelete: Cascade)
+  User          User                 @relation("SupportCallRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([supportCallId, userId])
+  @@map("support_call_request")
+}
+
+enum SupportCallStatus {
+  Active
+  Ended
+  Cancelled
+}
+
+enum SupportRequestStatus {
+  Pending
+  Accepted
+  Rejected
+  Completed
 }

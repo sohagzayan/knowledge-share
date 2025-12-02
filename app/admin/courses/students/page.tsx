@@ -1,6 +1,7 @@
 import { adminGetCourse } from "@/app/data/admin/admin-get-course";
 import { CourseAssignmentsView } from "./_components/CourseAssignmentsView";
 import { StudentManagementView } from "./_components/StudentManagementView";
+import { SupportSessionsView } from "./_components/SupportSessionsView";
 import {
   Card,
   CardContent,
@@ -68,9 +69,10 @@ export default async function StudentsPage({
       </div>
 
       <Tabs defaultValue="students" className="w-full">
-        <TabsList className="grid grid-cols-2 w-full">
+        <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="students">Student Management</TabsTrigger>
           <TabsTrigger value="assignments">Assignment Submissions</TabsTrigger>
+          <TabsTrigger value="support">Support Sessions</TabsTrigger>
         </TabsList>
 
         <TabsContent value="students">
@@ -97,6 +99,20 @@ export default async function StudentsPage({
             </CardHeader>
             <CardContent>
               <CourseAssignmentsView courseId={courseId} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="support">
+          <Card>
+            <CardHeader>
+              <CardTitle>Support Sessions</CardTitle>
+              <CardDescription>
+                Create and manage video support sessions for students
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SupportSessionsView courseId={courseId} />
             </CardContent>
           </Card>
         </TabsContent>

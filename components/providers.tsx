@@ -2,6 +2,7 @@
 
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { StreamClientProvider } from "@/components/providers/StreamClientProvider";
 import { useEffect, useState } from "react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -22,8 +23,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      {children}
-      <Toaster closeButton position="bottom-center" />
+      <StreamClientProvider>
+        {children}
+        <Toaster closeButton position="bottom-center" />
+      </StreamClientProvider>
     </ThemeProvider>
   );
 }
