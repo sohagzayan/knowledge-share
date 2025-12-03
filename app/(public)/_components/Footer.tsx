@@ -44,7 +44,7 @@ const footerLinks = {
     { name: "The Creator's Playbook Podcast", href: "#" },
     { name: "Training Webinars", href: "#" },
     { name: "Free Guides & Downloads", href: "#" },
-    { name: "Creator Stories", href: "#" },
+    { name: "Creator Stories", href: "/creator-stories" },
     { name: "Learning Hub", href: "#" },
   ],
   Support: [
