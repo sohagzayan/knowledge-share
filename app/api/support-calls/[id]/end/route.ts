@@ -18,34 +18,16 @@ export async function POST(
 
     const { id } = await params; // This is the streamCallId
     const supportCall = await getSupportCallByStreamId(id);
-    
-    if (!supportCall) {
-      // Try by support call ID instead
-      const { getSupportCallById } = await import("@/app/data/course/support-calls");
-      const callById = await getSupportCallById(id);
-      if (!callById) {
-        return NextResponse.json(
-          { error: "Support call not found" },
-          { status: 404 }
-        );
-      }
-      
-      // Check if user is the creator or admin
-      const userRole = (session.user as { role?: string }).role;
-      if (callById.createdBy !== session.user.id && userRole !== "admin") {
-        return NextResponse.json(
-          { error: "Unauthorized to end this call" },
-          { status: 403 }
-        );
-      }
 
-      await endSupportCall(callById.id);
-      return NextResponse.json({ success: true });
+    if (!supportCall) {
+      return NextResponse.json(
+        { error: "Support call not found" },
+        { status: 404 }
+      );
     }
 
-    // Check if user is the creator or admin
-    const userRole = (session.user as { role?: string }).role;
-    if (supportCall.createdBy !== session.user.id && userRole !== "admin") {
+    // Check if user is the creator
+    if (supportCall.createdBy !== session.user.id) {
       return NextResponse.json(
         { error: "Unauthorized to end this call" },
         { status: 403 }
