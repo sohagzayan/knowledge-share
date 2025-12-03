@@ -128,16 +128,8 @@ export function Navbar() {
     }
   }, [session]);
 
-  // Determine dashboard href based on user role
-  const dashboardHref = userRole === "admin" ? "/admin/courses" : "/dashboard";
-
-  // Filter navigation items based on auth status and update Dashboard href
-  const visibleNavItems: Array<{ name: string; href: string; requireAuth?: boolean }> = [
-    { name: "Courses", href: "/courses" },
-    ...(session
-      ? [{ name: "Dashboard", href: dashboardHref, requireAuth: true }]
-      : []),
-  ];
+  // Filter navigation items - removed Courses and Dashboard as they're in profile dropdown
+  const visibleNavItems: Array<{ name: string; href: string; requireAuth?: boolean }> = [];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-[backdrop-filter]:bg-background/60">
@@ -160,9 +152,14 @@ export function Navbar() {
             ))}
             
             <NavDropdown label="Resources" items={resourcesItems} />
-            <NavDropdown label="Instructors" items={instructorItems} />
+            {/* Hide Instructors and Get Support when logged in as admin */}
+            {userRole !== "admin" && (
+              <>
+                <NavDropdown label="Instructors" items={instructorItems} />
+                <NavDropdown label="Get Support" items={supportItems} />
+              </>
+            )}
             <NavDropdown label="Students" items={studentItems} />
-            <NavDropdown label="Get Support" items={supportItems} />
           </div>
 
           <div className="flex items-center space-x-4 ml-6">

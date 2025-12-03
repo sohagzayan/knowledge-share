@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@stream-io/video-react-sdk/dist/css/styles.css";
 
 @plugin "@tailwindcss/typography";
 
@@ -202,6 +203,69 @@ body {
   }
 }
 
+/* Stream.io Video Call Fullscreen Overrides */
+.str-video__call-controls,
+.str-video__call-controls__group,
+.str-video__speaker-layout,
+.str-video__grid-layout,
+.str-video__paginated-grid-layout,
+.str-video__video-preview,
+.str-video__video-preview__video {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.str-video__call-controls {
+  display: flex !important;
+  gap: 0.5rem !important;
+  flex-wrap: nowrap !important;
+}
+
+/* Ensure video layouts fill entire container */
+.str-video__speaker-layout,
+.str-video__grid-layout,
+.str-video__paginated-grid-layout {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Ensure all Stream.io buttons are visible */
+.str-video__call-controls__button {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Specifically ensure screen sharing button is visible */
+.str-video__call-controls__button[data-testid="screen-share-button"],
+.str-video__call-controls__button[aria-label*="screen"],
+.str-video__call-controls__button[aria-label*="Screen"],
+button[aria-label*="screen" i],
+button[aria-label*="share" i] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Remove any container padding/margins */
+.str-video__call-controls__group {
+  display: flex !important;
+  gap: 0.5rem !important;
+}
+
+/* Participants List - Use Stream.io Default Styling */
+/* Let Stream.io handle all styling - no overrides needed */
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -210,5 +274,16 @@ body {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }

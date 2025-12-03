@@ -17,7 +17,11 @@ export default async function CourseLayout({ children, params }: iAppProps) {
     <div className="flex flex-1">
       {/* sidebar - 30% */}
       <div className="w-80 border-r border-border shrink-0">
-        <CourseSidebar course={course.course} userPoints={course.userPoints} />
+        <CourseSidebar 
+          course={course.course} 
+          userPoints={course.userPoints}
+          userId={course.userId}
+        />
       </div>
 
       {/* Main Content - 70% */}
