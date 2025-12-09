@@ -1,73 +1,139 @@
-"use server";
-
 import { requireSuperAdmin } from "@/app/data/admin/require-superadmin";
+import { prisma } from "@/lib/db";
 import { TeamPageClient } from "./_components/TeamPageClient";
 
-const demoTeamMembers = [
-  {
-    id: "1",
-    name: "John Doe",
-    role: "Lead Developer",
-    email: "john.doe@example.com",
-    avatar: "https://i.pravatar.cc/150?img=1",
-    status: "Active",
-    projects: 5,
-    joinDate: "January 2023",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    role: "UI/UX Designer",
-    email: "jane.smith@example.com",
-    avatar: "https://i.pravatar.cc/150?img=5",
-    status: "Active",
-    projects: 3,
-    joinDate: "March 2023",
-  },
-  {
-    id: "3",
-    name: "Mike Johnson",
-    role: "Backend Developer",
-    email: "mike.johnson@example.com",
-    avatar: "https://i.pravatar.cc/150?img=12",
-    status: "Active",
-    projects: 7,
-    joinDate: "February 2023",
-  },
-  {
-    id: "4",
-    name: "Sarah Williams",
-    role: "Product Manager",
-    email: "sarah.williams@example.com",
-    avatar: "https://i.pravatar.cc/150?img=9",
-    status: "Active",
-    projects: 4,
-    joinDate: "April 2023",
-  },
-  {
-    id: "5",
-    name: "David Brown",
-    role: "DevOps Engineer",
-    email: "david.brown@example.com",
-    avatar: "https://i.pravatar.cc/150?img=15",
-    status: "Active",
-    projects: 6,
-    joinDate: "May 2023",
-  },
-  {
-    id: "6",
-    name: "Emily Davis",
-    role: "Frontend Developer",
-    email: "emily.davis@example.com",
-    avatar: "https://i.pravatar.cc/150?img=20",
-    status: "Active",
-    projects: 4,
-    joinDate: "June 2023",
-  },
-];
+interface SearchParams {
+  page?: string;
+  search?: string;
+}
 
-export default async function SuperAdminTeamPage() {
+export default async function SuperAdminTeamPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   await requireSuperAdmin();
+  const params = await searchParams;
+  const page = parseInt(params.page || "1");
+  const search = params.search || "";
+  const limit = 20;
+  const offset = (page - 1) * limit;
 
-  return <TeamPageClient teamMembers={demoTeamMembers} />;
+  // Get or create default workspace
+  let workspace = await prisma.workspace.findUnique({
+    where: { slug: "default" },
+  });
+
+  if (!workspace) {
+    workspace = await prisma.workspace.create({
+      data: {
+        name: "Default Workspace",
+        slug: "default",
+      },
+    });
+  }
+
+  // Build where clause for user search
+  const where: any = {};
+  if (search) {
+    where.OR = [
+      { email: { contains: search, mode: "insensitive" } },
+      { firstName: { contains: search, mode: "insensitive" } },
+      { lastName: { contains: search, mode: "insensitive" } },
+      { username: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  // Get users with pagination
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        username: true,
+        image: true,
+        createdAt: true,
+        emailVerified: true,
+        memberships: {
+          where: { workspaceId: workspace.id },
+          select: {
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: limit,
+      skip: offset,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  // Get pending invitations
+  const pendingInvitations = await prisma.invitation.findMany({
+    where: {
+      workspaceId: workspace.id,
+      status: "Pending",
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          username: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  // Get active superadmins
+  const activeSuperAdmins = await prisma.membership.findMany({
+    where: {
+      workspaceId: workspace.id,
+      role: "SuperAdmin",
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          username: true,
+          image: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return (
+    <TeamPageClient
+      users={users.map((u) => ({
+        ...u,
+        membershipRole: u.memberships[0]?.role || null,
+      }))}
+      total={total}
+      currentPage={page}
+      search={search}
+      pendingInvitations={pendingInvitations}
+      activeSuperAdmins={activeSuperAdmins.map((m) => ({
+        ...m.user,
+        membershipRole: m.role,
+        joinedAt: m.createdAt,
+      }))}
+      workspaceId={workspace.id}
+    />
+  );
 }

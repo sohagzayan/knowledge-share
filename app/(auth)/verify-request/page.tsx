@@ -29,7 +29,7 @@ export default function VerifyRequestRoute() {
 
 function VerifyRequest() {
   const router = useRouter();
-  const { data: session, update } = useSession();
+  const { data: session, update, status } = useSession();
   const [otp, setOtp] = useState("");
   const [emailPending, startTranstion] = useTransition();
   const [resendPending, setResendPending] = useState(false);
@@ -40,6 +40,13 @@ function VerifyRequest() {
   const email = params.get("email") as string;
   const loginType = params.get("type") as string; // "password" or null (email OTP)
   const isOtpCompleted = otp.length === 6;
+
+  // If user is already logged in, redirect to home
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      router.replace("/");
+    }
+  }, [status, session, router]);
 
   const startCountdown = useCallback(() => {
     if (countdownRef.current) {

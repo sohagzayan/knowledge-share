@@ -12,9 +12,10 @@ export const requireAdmin = cache(async () => {
   }
 
   const userRole = (session.user as any).role;
+  const hasSuperAdminMembership = (session.user as any).hasSuperAdminMembership;
   
-  // Allow both admin and superadmin to access admin routes
-  if (userRole !== "admin" && userRole !== "superadmin") {
+  // Allow admin, superadmin role, or admin with SuperAdmin membership
+  if (userRole !== "admin" && userRole !== "superadmin" && !hasSuperAdminMembership) {
     return redirect("/not-admin");
   }
 

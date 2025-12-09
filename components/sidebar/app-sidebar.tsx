@@ -20,6 +20,7 @@ import {
   IconSpeakerphone,
   IconReceipt,
   IconArticle,
+  IconKey,
 } from "@tabler/icons-react";
 import Logo from "@/public/logo.png";
 
@@ -106,12 +107,13 @@ const allNavMainItems = [
     title: "Team",
     url: "/admin/team",
     icon: IconUsers,
+    requiresSuperAdmin: true,
   },
   {
-    title: "Users",
-    url: "/admin/users",
-    icon: IconUsers,
-    requiresSuperAdmin: true,
+    title: "Membership",
+    url: "/admin/membership",
+    icon: IconKey,
+    requiresMembership: true, // Show when user has SuperAdmin membership but role is admin
   },
 ];
 
@@ -187,6 +189,7 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
   const userRole = (session?.user as { role?: string } | undefined)?.role;
+  const hasSuperAdminMembership = (session?.user as { hasSuperAdminMembership?: boolean } | undefined)?.hasSuperAdminMembership;
 
   // Filter nav items based on user role
   const navMainItems = React.useMemo(() => {
@@ -202,25 +205,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             "/admin/announcements": "/superadmin/announcements",
             "/admin/analytics": "/superadmin/analytics",
             "/admin/team": "/superadmin/team",
-            "/admin/users": "/superadmin/users",
           };
           return { ...item, url: urlMap[item.url] || item.url };
         }
         return item;
       })
       .filter((item) => {
-        // If item requires superadmin, only show for superadmin
-        if (item.requiresSuperAdmin) {
-          return userRole === "superadmin";
+        // If item requires membership (for admin users with SuperAdmin membership)
+        if ((item as any).requiresMembership) {
+          return userRole === "admin" && hasSuperAdminMembership;
         }
-        // If item is adminOnly, only show for admin (not superadmin)
+        // If item requires superadmin, show for superadmin role OR admin with membership
+        if (item.requiresSuperAdmin) {
+          return userRole === "superadmin" || (userRole === "admin" && hasSuperAdminMembership);
+        }
+        // If item is adminOnly, only show for admin (not superadmin, not admin with membership)
         if (item.adminOnly) {
-          return userRole === "admin";
+          return userRole === "admin" && !hasSuperAdminMembership;
         }
         // Otherwise show for all admin/superadmin users
         return userRole === "admin" || userRole === "superadmin";
       });
-  }, [userRole]);
+  }, [userRole, hasSuperAdminMembership]);
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>

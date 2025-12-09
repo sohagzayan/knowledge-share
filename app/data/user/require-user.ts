@@ -3,6 +3,7 @@ import "server-only";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { cookies } from "next/headers";
 
 type SessionUser = {
   id: string;
@@ -21,7 +22,18 @@ type SessionUser = {
 export const requireUser = cache(async (): Promise<SessionUser> => {
   const session = await auth();
 
+  // If no session, check if there's a session cookie that might not be read properly
   if (!session?.user) {
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get("next-auth.session-token") || 
+                         cookieStore.get("__Secure-next-auth.session-token");
+    
+    // If there's a session cookie but no session, there might be a sync issue
+    // Still redirect to login to force re-authentication
+    if (sessionToken) {
+      console.warn("Session cookie exists but auth() returned no session. Possible sync issue.");
+    }
+    
     return redirect("/login");
   }
 

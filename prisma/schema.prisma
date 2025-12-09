@@ -47,6 +47,8 @@ model User {
   blogComments          BlogComment[]
   blogReactions         BlogReaction[]
   notifications         Notification[]
+  memberships           Membership[]
+  invitations           Invitation[]            @relation("InvitedUser")
 
   @@map("user")
 }
@@ -597,4 +599,72 @@ enum NotificationType {
   ReactionReceived
   PointsEarned
   AdminReply
+  SuperAdminInvitation
+}
+
+// Multi-tenant Workspace and Membership models
+model Workspace {
+  id          String       @id @default(uuid())
+  name        String       @default("Default Workspace")
+  slug        String       @unique @default("default")
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  memberships Membership[]
+  invitations Invitation[]
+
+  @@map("workspace")
+}
+
+model Membership {
+  id          String    @id @default(uuid())
+  userId      String
+  workspaceId String
+  role        WorkspaceRole @default(Member)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([userId])
+  @@index([workspaceId])
+  @@map("membership")
+}
+
+model Invitation {
+  id          String          @id @default(uuid())
+  token       String          @unique
+  email       String
+  userId      String?         // Null if user doesn't exist yet
+  workspaceId String
+  role        WorkspaceRole
+  status      InvitationStatus @default(Pending)
+  invitedBy   String          // User ID who sent the invitation
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  user        User?           @relation("InvitedUser", fields: [userId], references: [id], onDelete: SetNull)
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([email])
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([status])
+  @@map("invitation")
+}
+
+enum WorkspaceRole {
+  Member
+  Admin
+  SuperAdmin
+}
+
+enum InvitationStatus {
+  Pending
+  Accepted
+  Expired
+  Revoked
 }

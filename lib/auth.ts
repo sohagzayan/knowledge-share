@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma) as any,
+  trustHost: true, // Required for Next.js 15 to properly handle cookies
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -166,14 +167,69 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       : []),
   ],
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       if (user) {
+        // Initial login - set user data
         token.id = user.id;
         token.firstName = (user as any).firstName;
         token.lastName = (user as any).lastName;
         token.username = (user as any).username;
         token.role = (user as any).role;
       }
+      
+      // Only check membership and refresh role when:
+      // 1. User is logging in (user is present)
+      // 2. Session is explicitly updated (trigger === "update")
+      // This avoids Prisma calls in Edge runtime (middleware)
+      if (token.id && (user || trigger === "update")) {
+        try {
+          // Refresh user role from database when session is updated
+          // This ensures role changes (like accepting superadmin invitation) are reflected
+          if (trigger === "update") {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: { role: true },
+            });
+            if (dbUser?.role) {
+              token.role = dbUser.role;
+            }
+          }
+          
+          const userRole = token.role as string;
+          
+          // Check if user has SuperAdmin membership (only for admin/users, not superadmin role users)
+          if (userRole === "admin" || (!userRole || userRole === "user")) {
+            const superAdminMembership = await prisma.membership.findFirst({
+              where: {
+                userId: token.id as string,
+                role: "SuperAdmin",
+              },
+              select: {
+                id: true,
+                workspaceId: true,
+              },
+            });
+            
+            token.hasSuperAdminMembership = !!superAdminMembership;
+            if (superAdminMembership) {
+              token.superAdminMembershipId = superAdminMembership.id;
+              token.superAdminWorkspaceId = superAdminMembership.workspaceId;
+            } else {
+              token.hasSuperAdminMembership = false;
+              token.superAdminMembershipId = undefined;
+              token.superAdminWorkspaceId = undefined;
+            }
+          } else if (userRole === "superadmin") {
+            // For superadmin role users, they don't need membership check
+            token.hasSuperAdminMembership = false;
+          }
+        } catch (error) {
+          // If Prisma fails (e.g., in Edge runtime), keep existing token values
+          // This prevents errors in middleware
+          console.warn("Could not check membership (likely Edge runtime):", error);
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
@@ -183,6 +239,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         (session.user as any).lastName = token.lastName;
         (session.user as any).username = token.username;
         (session.user as any).role = token.role;
+        (session.user as any).hasSuperAdminMembership = token.hasSuperAdminMembership;
+        (session.user as any).superAdminMembershipId = token.superAdminMembershipId;
+        (session.user as any).superAdminWorkspaceId = token.superAdminWorkspaceId;
       }
       return session;
     },
