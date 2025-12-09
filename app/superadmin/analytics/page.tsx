@@ -1,19 +1,50 @@
-"use server";
-
 import { requireSuperAdmin } from "@/app/data/admin/require-superadmin";
 import { AnalyticsPageClient } from "./_components/AnalyticsPageClient";
-import { adminGetEnrollmentStats } from "@/app/data/admin/admin-get-enrollment-stats";
-import { adminGetDashboardStats } from "@/app/data/admin/admin-get-dashboard-stats";
+import {
+  superadminGetPlatformOverview,
+  superadminGetUserAnalytics,
+  superadminGetCourseAnalytics,
+  superadminGetTeacherAnalytics,
+  superadminGetStudentAnalytics,
+  superadminGetRevenueAnalytics,
+  superadminGetEngagementAnalytics,
+  superadminGetSystemHealth,
+} from "@/app/data/admin/superadmin-get-analytics";
 
 export default async function SuperAdminAnalyticsPage() {
   await requireSuperAdmin();
-  const enrollmentData = await adminGetEnrollmentStats();
-  const dashboardStats = await adminGetDashboardStats();
+
+  // Fetch all analytics data in parallel
+  const [
+    platformOverview,
+    userAnalytics,
+    courseAnalytics,
+    teacherAnalytics,
+    studentAnalytics,
+    revenueAnalytics,
+    engagementAnalytics,
+    systemHealth,
+  ] = await Promise.all([
+    superadminGetPlatformOverview(),
+    superadminGetUserAnalytics(),
+    superadminGetCourseAnalytics(),
+    superadminGetTeacherAnalytics(),
+    superadminGetStudentAnalytics(),
+    superadminGetRevenueAnalytics(),
+    superadminGetEngagementAnalytics(),
+    superadminGetSystemHealth(),
+  ]);
 
   return (
     <AnalyticsPageClient
-      enrollmentData={enrollmentData}
-      dashboardStats={dashboardStats}
+      platformOverview={platformOverview}
+      userAnalytics={userAnalytics}
+      courseAnalytics={courseAnalytics}
+      teacherAnalytics={teacherAnalytics}
+      studentAnalytics={studentAnalytics}
+      revenueAnalytics={revenueAnalytics}
+      engagementAnalytics={engagementAnalytics}
+      systemHealth={systemHealth}
     />
   );
 }
