@@ -10,11 +10,17 @@ import {
 } from "@/components/ui/select";
 import { motion } from "framer-motion";
 
+type Course = {
+  id: string;
+  title: string;
+};
+
 type AnnouncementsFiltersProps = {
   selectedCourse: string;
   onCourseChange: (value: string) => void;
   sortBy: string;
   onSortByChange: (value: string) => void;
+  courses: readonly Course[];
 };
 
 export function AnnouncementsFilters({
@@ -22,9 +28,8 @@ export function AnnouncementsFilters({
   onCourseChange,
   sortBy,
   onSortByChange,
+  courses,
 }: AnnouncementsFiltersProps) {
-  const courses = ["All", "Fullstack Wordpress Developer Online Course", "Information About UI/UX Design Degree", "Complete html css and javascript course"];
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -52,9 +57,10 @@ export function AnnouncementsFilters({
               <SelectValue placeholder="Select a course" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="All">All</SelectItem>
               {courses.map((course) => (
-                <SelectItem key={course} value={course}>
-                  {course}
+                <SelectItem key={course.id} value={course.id}>
+                  {course.title}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -77,8 +83,8 @@ export function AnnouncementsFilters({
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="DESC">DESC</SelectItem>
-              <SelectItem value="ASC">ASC</SelectItem>
+              <SelectItem value="DESC">Newest First</SelectItem>
+              <SelectItem value="ASC">Oldest First</SelectItem>
             </SelectContent>
           </Select>
         </motion.div>

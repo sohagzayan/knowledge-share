@@ -1,20 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { IconPlus } from "@tabler/icons-react";
 import { AnnouncementsTable } from "./AnnouncementsTable";
 import { AnnouncementsFilters } from "./AnnouncementsFilters";
 import { CreateAnnouncementModal } from "./CreateAnnouncementModal";
-
-type Announcement = {
-  id: string;
-  date: string;
-  title: string;
-  courseName: string;
-  status: "Published" | "Draft" | "Archived";
-};
+import { useRouter } from "next/navigation";
 
 type Course = {
   id: string;
@@ -22,17 +15,20 @@ type Course = {
 };
 
 type AnnouncementsPageClientProps = {
-  announcements: readonly Announcement[];
   courses: readonly Course[];
 };
 
 export function AnnouncementsPageClient({
-  announcements,
   courses,
 }: AnnouncementsPageClientProps) {
   const [selectedCourse, setSelectedCourse] = useState("All");
   const [sortBy, setSortBy] = useState("DESC");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
+
+  const handleSuccess = () => {
+    router.refresh();
+  };
 
   return (
     <motion.div
@@ -91,13 +87,14 @@ export function AnnouncementsPageClient({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.5, type: "spring", stiffness: 100 }}
       >
-        <AnnouncementsTable announcements={announcements} />
+        <AnnouncementsTable selectedCourse={selectedCourse} sortBy={sortBy} />
       </motion.div>
 
       <CreateAnnouncementModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         courses={courses}
+        onSuccess={handleSuccess}
       />
     </motion.div>
   );

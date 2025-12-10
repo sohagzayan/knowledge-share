@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -19,7 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { IconSearch, IconX } from "@tabler/icons-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
+import { RichTextEditor } from "@/components/rich-text-editor/Editor";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Uploader } from "@/components/file-uploader/Uploader";
 
 type Course = {
   id: string;
@@ -30,17 +37,72 @@ type CreateAnnouncementModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   courses: readonly Course[];
+  onSuccess?: () => void;
 };
+
+const announcementSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  body: z.string().min(1, "Body is required"),
+  targetRole: z.enum(["AllStudents", "AllTeachers", "AllUsers", "SpecificStudents", "SpecificTeachers", "CourseStudents"]),
+  targetCourseId: z.string().optional().nullable(),
+  targetUserIds: z.array(z.string()).optional().default([]),
+  scheduledAt: z.string().optional().nullable(),
+  isUrgent: z.boolean().optional().default(false),
+  attachmentKeys: z.array(z.string()).optional().default([]),
+  publishNow: z.boolean().optional().default(true),
+});
+
+type AnnouncementFormData = z.infer<typeof announcementSchema>;
 
 export function CreateAnnouncementModal({
   open,
   onOpenChange,
   courses,
+  onSuccess,
 }: CreateAnnouncementModalProps) {
-  const [selectedCourseId, setSelectedCourseId] = useState("");
-  const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+
+  const form = useForm<AnnouncementFormData>({
+    resolver: zodResolver(announcementSchema),
+    defaultValues: {
+      title: "",
+      body: "",
+      targetRole: "AllStudents",
+      targetCourseId: null,
+      targetUserIds: [],
+      scheduledAt: null,
+      isUrgent: false,
+      attachmentKeys: [],
+      publishNow: true,
+    },
+  });
+
+  const targetRole = form.watch("targetRole");
+  const targetCourseId = form.watch("targetCourseId");
+
+  // Fetch users when needed
+  useEffect(() => {
+    if (targetRole === "SpecificStudents" || targetRole === "SpecificTeachers") {
+      const fetchUsers = async () => {
+        try {
+          const response = await fetch(`/api/students`);
+          if (response.ok) {
+            const data = await response.json();
+            setUsers(data.map((u: any) => ({
+              id: u.id,
+              name: `${u.firstName} ${u.lastName || ""}`.trim(),
+              email: u.email,
+            })));
+          }
+        } catch (error) {
+          console.error("Failed to fetch users:", error);
+        }
+      };
+      fetchUsers();
+    }
+  }, [targetRole]);
 
   const filteredCourses = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -52,178 +114,383 @@ export function CreateAnnouncementModal({
     );
   }, [courses, searchQuery]);
 
-  const selectedCourse = courses.find((c) => c.id === selectedCourseId);
-
-  const handlePublish = () => {
-    if (!selectedCourseId || !title.trim() || !summary.trim()) {
-      return;
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return users;
     }
-    console.log("Publish announcement:", {
-      courseId: selectedCourseId,
-      title,
-      summary,
-    });
-    // TODO: Implement publish functionality
-    handleClose();
+    const query = searchQuery.toLowerCase();
+    return users.filter((user) =>
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
+
+  const onSubmit = async (data: AnnouncementFormData) => {
+    try {
+      const payload = {
+        ...data,
+        targetUserIds: (targetRole === "SpecificStudents" || targetRole === "SpecificTeachers") 
+          ? selectedUsers 
+          : [],
+      };
+
+      const response = await fetch("/api/announcements", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create announcement");
+      }
+
+      toast.success("Announcement created successfully");
+      form.reset();
+      setSelectedUsers([]);
+      setSearchQuery("");
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create announcement");
+    }
   };
 
   const handleClose = () => {
-    setSelectedCourseId("");
-    setTitle("");
-    setSummary("");
+    form.reset();
+    setSelectedUsers([]);
     setSearchQuery("");
     onOpenChange(false);
   };
+
+  // Superadmin can target all roles
+  const availableTargetRoles = ["AllStudents", "AllTeachers", "AllUsers", "SpecificStudents", "SpecificTeachers", "CourseStudents"];
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <AnimatePresence>
         {open && (
-          <DialogContent className="max-w-2xl border-border/50 bg-gradient-to-br from-background/98 via-background/95 to-background p-0 shadow-2xl">
+          <DialogContent className="max-h-[90vh] overflow-hidden border-border/50 bg-gradient-to-br from-background/98 via-background/95 to-background p-0 shadow-2xl flex flex-col w-[calc(100%-2rem)] max-w-[min(56rem,calc(100vw-2rem))]">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 30 }}
               transition={{ duration: 0.4, type: "spring", stiffness: 300, damping: 30 }}
-              className="relative p-8"
+              className="relative p-6 md:p-8 overflow-y-auto flex-1 min-w-0"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-50" />
               <DialogHeader className="relative space-y-2 text-left">
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.3 }}
-                >
-                  <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-                    Create Announcement
-                  </DialogTitle>
-                </motion.div>
+                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                  Create Announcement
+                </DialogTitle>
               </DialogHeader>
 
-              <div className="relative mt-6 space-y-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15, duration: 0.4, type: "spring" }}
-                  className="space-y-2"
-                >
-                  <Label htmlFor="course" className="text-sm font-semibold">
-                    Select Course
-                  </Label>
-                  <Select
-                    value={selectedCourseId}
-                    onValueChange={setSelectedCourseId}
-                  >
-                    <SelectTrigger
-                      id="course"
-                      className="h-12 w-full transition-all hover:border-primary/50 focus:border-primary"
-                    >
-                      <SelectValue placeholder="Select a course" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      <div className="sticky top-0 z-10 border-b border-border/50 bg-background p-2">
-                        <div className="relative">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="relative mt-6 space-y-6 w-full min-w-0">
+                  {/* Target Role - MUST BE FIRST to determine if course field is needed */}
+                  <FormField
+                    control={form.control}
+                    name="targetRole"
+                    render={({ field }) => (
+                      <FormItem className="w-full min-w-0">
+                        <FormLabel>Target Audience</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            // Clear course selection if not targeting course students
+                            if (value !== "CourseStudents") {
+                              form.setValue("targetCourseId", null);
+                            }
+                            // Clear user selection if not targeting specific users
+                            if (value !== "SpecificStudents" && value !== "SpecificTeachers") {
+                              setSelectedUsers([]);
+                            }
+                          }}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full max-w-full min-w-0 h-12">
+                              <SelectValue placeholder="Select audience" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {availableTargetRoles.map((role) => (
+                              <SelectItem key={role} value={role}>
+                                {role === "AllStudents" && "All Students"}
+                                {role === "AllTeachers" && "All Teachers/Admin"}
+                                {role === "AllUsers" && "All Users"}
+                                {role === "CourseStudents" && "Students of a Specific Course"}
+                                {role === "SpecificStudents" && "Specific Students"}
+                                {role === "SpecificTeachers" && "Specific Teachers"}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Course Selection - ONLY shows when "CourseStudents" is selected */}
+                  {targetRole === "CourseStudents" && (
+                    <FormField
+                      control={form.control}
+                      name="targetCourseId"
+                      render={({ field }) => (
+                        <FormItem className="w-full min-w-0">
+                          <FormLabel>Select Course</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || undefined}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="w-full max-w-full min-w-0 h-12">
+                                <SelectValue placeholder="Select a course" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="max-h-[300px]">
+                              <div className="sticky top-0 z-10 border-b border-border/50 bg-background p-2">
+                                <div className="relative">
+                                  <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                  <Input
+                                    placeholder="Search..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="h-9 pl-9 pr-8 w-full"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  {searchQuery && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSearchQuery("")}
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-muted"
+                                    >
+                                      <IconX className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="max-h-[200px] overflow-y-auto">
+                                {filteredCourses.length === 0 ? (
+                                  <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                                    No courses found
+                                  </div>
+                                ) : (
+                                  filteredCourses.map((course) => (
+                                    <SelectItem key={course.id} value={course.id}>
+                                      {course.title}
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </div>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Title */}
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem className="w-full min-w-0">
+                        <FormLabel>Announcement Title</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter announcement title"
+                            {...field}
+                            className="h-12 w-full max-w-full min-w-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Body - Rich Text Editor */}
+                  <FormField
+                    control={form.control}
+                    name="body"
+                    render={({ field }) => (
+                      <FormItem className="w-full min-w-0">
+                        <FormLabel>Announcement Body</FormLabel>
+                        <FormControl>
+                          <div className="w-full max-w-full min-w-0">
+                            <RichTextEditor field={field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Specific Users Selection */}
+                  {(targetRole === "SpecificStudents" || targetRole === "SpecificTeachers") && (
+                    <FormItem className="w-full min-w-0">
+                      <FormLabel>Select Users</FormLabel>
+                      <div className="space-y-2 w-full min-w-0">
+                        <div className="relative w-full min-w-0">
                           <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
-                            placeholder="Search..."
+                            placeholder="Search users..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-9 pl-9 pr-8"
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
+                            className="pl-9 w-full max-w-full min-w-0"
                           />
-                          {searchQuery && (
-                            <button
-                              type="button"
-                              onClick={() => setSearchQuery("")}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-muted"
-                            >
-                              <IconX className="h-3 w-3" />
-                            </button>
-                          )}
                         </div>
-                      </div>
-                      <div className="max-h-[200px] overflow-y-auto">
-                        {filteredCourses.length === 0 ? (
-                          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                            No courses found
-                          </div>
-                        ) : (
-                          filteredCourses.map((course) => (
-                            <SelectItem
-                              key={course.id}
-                              value={course.id}
-                              className="cursor-pointer"
+                        <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                          {filteredUsers.map((user) => (
+                            <div
+                              key={user.id}
+                              className="flex items-center space-x-2 p-2 hover:bg-muted rounded"
                             >
-                              {course.title}
-                            </SelectItem>
-                          ))
+                              <input
+                                type="checkbox"
+                                checked={selectedUsers.includes(user.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedUsers([...selectedUsers, user.id]);
+                                  } else {
+                                    setSelectedUsers(selectedUsers.filter((id) => id !== user.id));
+                                  }
+                                }}
+                              />
+                              <span className="text-sm">{user.name} ({user.email})</span>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedUsers.length > 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            {selectedUsers.length} user(s) selected
+                          </p>
                         )}
                       </div>
-                    </SelectContent>
-                  </Select>
-                </motion.div>
+                    </FormItem>
+                  )}
 
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.4, type: "spring" }}
-                  className="space-y-2"
-                >
-                  <Label htmlFor="title" className="text-sm font-semibold">
-                    Announcement Title
-                  </Label>
-                  <Input
-                    id="title"
-                    placeholder="Enter announcement title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="h-12 transition-all hover:border-primary/50 focus:border-primary"
+                  {/* Urgent Toggle */}
+                  <FormField
+                    control={form.control}
+                    name="isUrgent"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4 w-full min-w-0">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <FormLabel>Mark as Urgent</FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Urgent announcements appear at the top
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
-                </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25, duration: 0.4, type: "spring" }}
-                  className="space-y-2"
-                >
-                  <Label htmlFor="summary" className="text-sm font-semibold">
-                    Summary
-                  </Label>
-                  <Textarea
-                    id="summary"
-                    placeholder="Enter announcement summary"
-                    value={summary}
-                    onChange={(e) => setSummary(e.target.value)}
-                    rows={4}
-                    className="resize-none transition-all hover:border-primary/50 focus:border-primary"
+                  {/* Publish Settings */}
+                  <FormField
+                    control={form.control}
+                    name="publishNow"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4 w-full min-w-0">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <FormLabel>Publish Now</FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Uncheck to schedule for later
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked);
+                              if (checked) {
+                                form.setValue("scheduledAt", null);
+                              }
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
-                </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.4, type: "spring" }}
-                  className="flex gap-3 pt-4"
-                >
-                  <Button
-                    variant="outline"
-                    onClick={handleClose}
-                    className="group flex-1 rounded-lg border-red-500/50 bg-background px-6 py-6 text-base font-semibold text-red-600 transition-all hover:scale-105 hover:bg-red-50 hover:shadow-lg hover:shadow-red-500/20 dark:hover:bg-red-950/20"
-                  >
-                    <span className="relative z-10">Cancel</span>
-                  </Button>
-                  <Button
-                    onClick={handlePublish}
-                    disabled={!selectedCourseId || !title.trim() || !summary.trim()}
-                    className="group relative flex-1 overflow-hidden rounded-lg bg-red-600 px-6 py-6 text-base font-semibold text-white shadow-lg shadow-red-500/25 transition-all hover:scale-105 hover:bg-red-700 hover:shadow-xl hover:shadow-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                  >
-                    <span className="absolute inset-0 bg-gradient-to-r from-red-400 to-red-500 opacity-0 transition-opacity group-hover:opacity-100" />
-                    <span className="relative z-10">Publish</span>
-                  </Button>
-                </motion.div>
-              </div>
+                  {/* Schedule Date/Time */}
+                  {!form.watch("publishNow") && (
+                    <FormField
+                      control={form.control}
+                      name="scheduledAt"
+                      render={({ field }) => (
+                        <FormItem className="w-full min-w-0">
+                          <FormLabel>Schedule Date & Time</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="datetime-local"
+                              value={field.value ? new Date(field.value).toISOString().slice(0, 16) : ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                field.onChange(value ? new Date(value).toISOString() : null);
+                              }}
+                              className="w-full max-w-full min-w-0"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Attachments */}
+                  <FormItem className="w-full min-w-0">
+                    <FormLabel>Attachments (Optional)</FormLabel>
+                    <div className="w-full max-w-full min-w-0">
+                      <Uploader
+                        fileTypeAccepted="document"
+                        onChange={(key) => {
+                          const current = form.getValues("attachmentKeys") || [];
+                          if (key && !current.includes(key)) {
+                            form.setValue("attachmentKeys", [...current, key]);
+                          }
+                        }}
+                      />
+                    </div>
+                    {form.watch("attachmentKeys")?.length > 0 && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {form.watch("attachmentKeys")?.length} file(s) attached
+                      </p>
+                    )}
+                  </FormItem>
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-4 w-full min-w-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleClose}
+                      className="group flex-1 min-w-0 rounded-lg border-red-500/50 bg-background px-6 py-6 text-base font-semibold text-red-600 transition-all hover:scale-105 hover:bg-red-50 hover:shadow-lg hover:shadow-red-500/20 dark:hover:bg-red-950/20"
+                    >
+                      <span className="relative z-10">Cancel</span>
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={form.formState.isSubmitting || (targetRole === "CourseStudents" && !targetCourseId)}
+                      className="group relative flex-1 min-w-0 overflow-hidden rounded-lg bg-red-600 px-6 py-6 text-base font-semibold text-white shadow-lg shadow-red-500/25 transition-all hover:scale-105 hover:bg-red-700 hover:shadow-xl hover:shadow-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    >
+                      <span className="absolute inset-0 bg-gradient-to-r from-red-400 to-red-500 opacity-0 transition-opacity group-hover:opacity-100" />
+                      <span className="relative z-10">
+                        {form.formState.isSubmitting ? "Creating..." : "Publish"}
+                      </span>
+                    </Button>
+                  </div>
+                </form>
+              </Form>
             </motion.div>
           </DialogContent>
         )}

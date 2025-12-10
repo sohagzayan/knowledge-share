@@ -1,19 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconChartBar, IconFolder } from "@tabler/icons-react";
 import { AnnouncementsTable } from "./AnnouncementsTable";
 import { AnnouncementsFilters } from "./AnnouncementsFilters";
 import { CreateAnnouncementModal } from "./CreateAnnouncementModal";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 type Announcement = {
   id: string;
-  date: string;
   title: string;
-  courseName: string;
-  status: "Published" | "Draft" | "Archived";
+  body: string;
+  createdAt: string;
+  publishedAt: string | null;
+  status: "Draft" | "Scheduled" | "Published" | "Expired";
+  targetRole: string;
+  isUrgent: boolean;
+  viewCount: number;
+  createdBy: {
+    id: string;
+    firstName: string;
+    lastName: string | null;
+    email: string;
+    image: string | null;
+  };
+  targetCourse: {
+    id: string;
+    title: string;
+    slug: string;
+  } | null;
+  _count: {
+    readStatuses: number;
+  };
 };
 
 type Course = {
@@ -22,17 +43,49 @@ type Course = {
 };
 
 type AnnouncementsPageClientProps = {
-  announcements: readonly Announcement[];
+  initialAnnouncements: Announcement[];
   courses: readonly Course[];
 };
 
 export function AnnouncementsPageClient({
-  announcements,
+  initialAnnouncements,
   courses,
 }: AnnouncementsPageClientProps) {
+  const [announcements, setAnnouncements] = useState(initialAnnouncements);
   const [selectedCourse, setSelectedCourse] = useState("All");
   const [sortBy, setSortBy] = useState("DESC");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+
+  // Fetch announcements when filters change
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (selectedCourse !== "All") {
+          params.append("courseId", selectedCourse);
+        }
+        params.append("sortBy", sortBy);
+
+        const response = await fetch(`/api/announcements?${params.toString()}`);
+        if (!response.ok) throw new Error("Failed to fetch");
+        const data = await response.json();
+        setAnnouncements(data);
+      } catch (error) {
+        toast.error("Failed to fetch announcements");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAnnouncements();
+  }, [selectedCourse, sortBy]);
+
+  const handleRefresh = () => {
+    router.refresh();
+  };
 
   return (
     <motion.div
@@ -59,9 +112,16 @@ export function AnnouncementsPageClient({
           initial={{ opacity: 0, x: 20, scale: 0.9 }}
           animate={{ opacity: 1, x: 0, scale: 1 }}
           transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          className="flex gap-2"
         >
+          <Button
+            variant="outline"
+            onClick={() => window.open("/admin/announcements/analytics", "_blank")}
+            className="group relative overflow-hidden"
+          >
+            <IconChartBar className="mr-2 h-4 w-4" />
+            Analytics
+          </Button>
           <Button
             onClick={() => setIsModalOpen(true)}
             className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 px-6 py-6 text-base font-semibold text-white shadow-lg shadow-pink-500/25 transition-all hover:scale-105 hover:from-pink-700 hover:to-rose-700 hover:shadow-xl hover:shadow-pink-500/30"
@@ -83,6 +143,7 @@ export function AnnouncementsPageClient({
           onCourseChange={setSelectedCourse}
           sortBy={sortBy}
           onSortByChange={setSortBy}
+          courses={courses}
         />
       </motion.div>
 
@@ -91,15 +152,19 @@ export function AnnouncementsPageClient({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.5, type: "spring", stiffness: 100 }}
       >
-        <AnnouncementsTable announcements={announcements} />
+        <AnnouncementsTable
+          announcements={announcements}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
+        />
       </motion.div>
 
       <CreateAnnouncementModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         courses={courses}
+        onSuccess={handleRefresh}
       />
     </motion.div>
   );
 }
-

@@ -36,11 +36,19 @@ export function RichTextEditor({ field }: { field: any }) {
 
     content: field.value ? (() => {
       try {
-        return typeof field.value === 'string' ? JSON.parse(field.value) : field.value;
+        // Try to parse as JSON first (TipTap JSON format)
+        const parsed = typeof field.value === 'string' ? JSON.parse(field.value) : field.value;
+        // Check if it's TipTap JSON (has 'type' property)
+        if (parsed && typeof parsed === 'object' && 'type' in parsed) {
+          return parsed;
+        }
+        // If not JSON, treat as HTML string (TipTap can parse HTML)
+        return field.value;
       } catch {
-        return "<p>Hello World 🚀</p>";
+        // If JSON parsing fails, treat as HTML string
+        return field.value || "<p></p>";
       }
-    })() : "<p>Hello World 🚀</p>",
+    })() : "<p></p>",
   });
 
   // Update editor content when field value changes externally (e.g., from AI generation)
@@ -49,15 +57,40 @@ export function RichTextEditor({ field }: { field: any }) {
     
     if (field.value) {
       try {
-        const parsedContent = typeof field.value === 'string' ? JSON.parse(field.value) : field.value;
+        // Try to parse as JSON first
+        let contentToSet: any = field.value;
+        if (typeof field.value === 'string') {
+          try {
+            const parsed = JSON.parse(field.value);
+            // Check if it's TipTap JSON format
+            if (parsed && typeof parsed === 'object' && 'type' in parsed) {
+              contentToSet = parsed;
+            } else {
+              // Not JSON, treat as HTML
+              contentToSet = field.value;
+            }
+          } catch {
+            // Not JSON, treat as HTML string
+            contentToSet = field.value;
+          }
+        }
+
         const currentContent = editor.getJSON();
         const currentContentStr = JSON.stringify(currentContent);
-        const newContentStr = JSON.stringify(parsedContent);
         
-        // Only update if content is different to avoid unnecessary updates and loops
-        if (currentContentStr !== newContentStr) {
+        // For HTML strings, we need to compare differently
+        let shouldUpdate = true;
+        if (typeof contentToSet === 'string' && contentToSet.startsWith('<')) {
+          // It's HTML, always update (TipTap will parse it)
+          shouldUpdate = true;
+        } else {
+          const newContentStr = JSON.stringify(contentToSet);
+          shouldUpdate = currentContentStr !== newContentStr;
+        }
+        
+        if (shouldUpdate) {
           isUpdatingFromExternal.current = true;
-          editor.commands.setContent(parsedContent);
+          editor.commands.setContent(contentToSet);
           // Reset flag after a brief delay to allow the update to complete
           setTimeout(() => {
             isUpdatingFromExternal.current = false;
@@ -65,10 +98,10 @@ export function RichTextEditor({ field }: { field: any }) {
         }
       } catch (error) {
         console.error("Error updating editor content:", error);
-        // If parsing fails, try to set as plain text
+        // Fallback: set as HTML
         if (typeof field.value === 'string') {
           isUpdatingFromExternal.current = true;
-          editor.commands.setContent(`<p>${field.value}</p>`);
+          editor.commands.setContent(field.value);
           setTimeout(() => {
             isUpdatingFromExternal.current = false;
           }, 100);

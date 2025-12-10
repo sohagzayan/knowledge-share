@@ -37,12 +37,17 @@ async function authMiddleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run on all routes except static assets, but auth check only on admin routes
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth).*)"],
+  // Run on all routes except static assets and API routes (API routes handle their own auth)
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/).*)"],
 };
 
 // Combine Arcjet with your existing middleware
 export default createMiddleware(aj, async (request: NextRequest) => {
+  // Skip Arcjet protection for API routes (they handle their own authentication)
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   // Only apply auth middleware to admin routes
   if (request.nextUrl.pathname.startsWith("/admin")) {
     return authMiddleware(request);

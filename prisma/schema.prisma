@@ -49,6 +49,8 @@ model User {
   notifications         Notification[]
   memberships           Membership[]
   invitations           Invitation[]            @relation("InvitedUser")
+  announcementsCreated  Announcement[]          @relation("AnnouncementCreator")
+  announcementsRead     AnnouncementReadStatus[] @relation("AnnouncementReader")
 
   @@map("user")
 }
@@ -140,6 +142,7 @@ model Course {
   enrollment       Enrollment[]
   supportCalls     SupportCall[]
   blogs             Blog[]
+  announcements     Announcement[]
 }
 
 model Chapter {
@@ -667,4 +670,63 @@ enum InvitationStatus {
   Accepted
   Expired
   Revoked
+}
+
+// Announcements System
+model Announcement {
+  id              String                    @id @default(uuid())
+  title           String
+  body            String                    // Rich text content (HTML)
+  createdById     String
+  targetRole      AnnouncementTargetRole
+  targetCourseId  String?                   // Optional: specific course
+  targetUserIds   String[]                  // Optional: specific user IDs (JSON array)
+  scheduledAt     DateTime?                 // Optional: schedule for future
+  publishedAt     DateTime?                 // When actually published
+  status          AnnouncementStatus        @default(Draft)
+  isUrgent        Boolean                   @default(false)
+  attachmentKeys  String[]                  // S3 keys for attachments
+  viewCount       Int                       @default(0)
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  createdBy       User                      @relation("AnnouncementCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  targetCourse    Course?                   @relation(fields: [targetCourseId], references: [id], onDelete: SetNull)
+  readStatuses    AnnouncementReadStatus[]
+
+  @@index([createdById])
+  @@index([targetCourseId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([targetRole])
+  @@map("announcement")
+}
+
+model AnnouncementReadStatus {
+  id             String       @id @default(uuid())
+  userId         String
+  announcementId String
+  readAt         DateTime     @default(now())
+  user           User         @relation("AnnouncementReader", fields: [userId], references: [id], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, announcementId])
+  @@index([userId])
+  @@index([announcementId])
+  @@map("announcement_read_status")
+}
+
+enum AnnouncementTargetRole {
+  AllStudents
+  AllTeachers
+  AllUsers
+  SpecificStudents
+  SpecificTeachers
+  CourseStudents
+}
+
+enum AnnouncementStatus {
+  Draft
+  Scheduled
+  Published
+  Expired
 }
