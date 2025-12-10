@@ -134,6 +134,7 @@ const allNavMainItems = [
     url: "/superadmin/teachers",
     icon: IconSchool,
     requiresSuperAdmin: true,
+    hideFromAdmin: true, // Hide from admin users even if they have SuperAdmin membership
   },
   {
     title: "Course Analytics",
@@ -146,36 +147,42 @@ const allNavMainItems = [
     url: "/superadmin/content-audit",
     icon: IconFileCheck,
     requiresSuperAdmin: true,
+    hideFromAdmin: true, // Hide from admin users even if they have SuperAdmin membership
   },
   {
     title: "Financial Analytics",
     url: "/superadmin/financial",
     icon: IconCurrencyDollar,
     requiresSuperAdmin: true,
+    hideFromAdmin: true, // Hide from admin users even if they have SuperAdmin membership
   },
   {
     title: "Engagement Analytics",
     url: "/superadmin/engagement",
     icon: IconActivity,
     requiresSuperAdmin: true,
+    hideFromAdmin: true, // Hide from admin users even if they have SuperAdmin membership
   },
   {
     title: "User Management",
     url: "/superadmin/users",
     icon: IconUsersGroup,
     requiresSuperAdmin: true,
+    hideFromAdmin: true, // Hide from admin users even if they have SuperAdmin membership
   },
   {
     title: "Security & Logs",
     url: "/superadmin/security",
     icon: IconShield,
     requiresSuperAdmin: true,
+    hideFromAdmin: true, // Hide from admin users even if they have SuperAdmin membership
   },
   {
     title: "System Config",
     url: "/superadmin/config",
     icon: IconDatabase,
     requiresSuperAdmin: true,
+    hideFromAdmin: true, // Hide from admin users even if they have SuperAdmin membership
   },
 ];
 
@@ -273,6 +280,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         return item;
       })
       .filter((item) => {
+        // If item should be hidden from admin users, only show to superadmin
+        if ((item as any).hideFromAdmin) {
+          return userRole === "superadmin";
+        }
         // If item requires membership (for admin users with SuperAdmin membership)
         if ((item as any).requiresMembership) {
           return userRole === "admin" && hasSuperAdminMembership;
