@@ -51,6 +51,14 @@ model User {
   invitations           Invitation[]            @relation("InvitedUser")
   announcementsCreated  Announcement[]          @relation("AnnouncementCreator")
   announcementsRead     AnnouncementReadStatus[] @relation("AnnouncementReader")
+  teacherApplications   TeacherApplication[]
+  activityLogs          ActivityLog[]
+  courseRatings         CourseRating[]
+  searchAnalytics       SearchAnalytics[]
+  loginHistory          LoginHistory[]
+  errorLogs             ErrorLog[]
+  watchAnalytics        LessonWatchAnalytics[]
+  onlineSessions        OnlineSession[]
 
   @@map("user")
 }
@@ -143,6 +151,7 @@ model Course {
   supportCalls     SupportCall[]
   blogs             Blog[]
   announcements     Announcement[]
+  ratings           CourseRating[]
 }
 
 model Chapter {
@@ -174,6 +183,7 @@ model Lesson {
   Chapter        Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   lessonProgress LessonProgress[]
   earlyUnlocks   EarlyUnlock[]
+  watchAnalytics LessonWatchAnalytics[]
   // Publish / visibility status
   status         LessonStatus     @default(Draft)
   // Optional scheduled publish time (used when status = Scheduled)
@@ -205,6 +215,7 @@ model Enrollment {
   loginSessions        LoginSession[]
   studentActivities    StudentActivity[]
   studentBadges        StudentBadge[]
+  paymentTransactions  PaymentTransaction[]
 
   @@unique([userId, courseId])
 }
@@ -729,4 +740,212 @@ enum AnnouncementStatus {
   Scheduled
   Published
   Expired
+}
+
+// Teacher Application & Verification System
+model TeacherApplication {
+  id              String                    @id @default(uuid())
+  userId          String
+  status          TeacherApplicationStatus  @default(Pending)
+  applicationData Json                      // Store application form data
+  rejectionReason String?
+  reviewedBy      String?                   // Admin/Superadmin who reviewed
+  reviewedAt      DateTime?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("teacher_application")
+}
+
+enum TeacherApplicationStatus {
+  Pending
+  Approved
+  Rejected
+}
+
+// Activity Logs for Teachers
+model ActivityLog {
+  id          String       @id @default(uuid())
+  userId      String
+  action      String       // e.g., "lesson_uploaded", "course_updated"
+  entityType  String       // e.g., "course", "lesson", "chapter"
+  entityId    String?
+  metadata    Json?        // Additional context
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime     @default(now())
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_log")
+}
+
+// Payment Transactions
+model PaymentTransaction {
+  id                String                    @id @default(uuid())
+  enrollmentId      String
+  amount            Int                       // Amount in cents
+  currency          String                    @default("usd")
+  stripePaymentId   String?                   @unique
+  stripeSessionId   String?
+  status            PaymentTransactionStatus  @default(Pending)
+  paymentMethod     String?
+  refunded          Boolean                   @default(false)
+  refundAmount      Int?
+  refundReason      String?
+  refundedAt        DateTime?
+  metadata          Json?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  enrollment        Enrollment                @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([stripePaymentId])
+  @@map("payment_transaction")
+}
+
+enum PaymentTransactionStatus {
+  Pending
+  Completed
+  Failed
+  Refunded
+  Cancelled
+}
+
+// Course Ratings
+model CourseRating {
+  id          String   @id @default(uuid())
+  courseId    String
+  userId      String
+  rating      Int      // 1-5
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@index([rating])
+  @@index([createdAt])
+  @@map("course_rating")
+}
+
+// Search Analytics
+model SearchAnalytics {
+  id            String   @id @default(uuid())
+  userId        String?
+  query         String
+  resultsCount  Int      @default(0)
+  clickedResult String?  // Course ID or lesson ID that was clicked
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([query])
+  @@index([createdAt])
+  @@index([resultsCount])
+  @@map("search_analytics")
+}
+
+// Login History & Security
+model LoginHistory {
+  id            String          @id @default(uuid())
+  userId        String
+  ipAddress     String?
+  userAgent     String?
+  country       String?
+  city          String?
+  success       Boolean         @default(true)
+  failureReason String?
+  deviceInfo    Json?
+  createdAt     DateTime        @default(now())
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([success])
+  @@index([createdAt])
+  @@index([ipAddress])
+  @@map("login_history")
+}
+
+// Error Logs
+model ErrorLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  errorType   String   // e.g., "API_ERROR", "VALIDATION_ERROR", "DATABASE_ERROR"
+  statusCode  Int?
+  message     String
+  stack       String?
+  endpoint    String?
+  method      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([errorType])
+  @@index([statusCode])
+  @@index([createdAt])
+  @@map("error_log")
+}
+
+// System Configuration
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+  @@map("system_config")
+}
+
+// Lesson Watch Analytics
+model LessonWatchAnalytics {
+  id              String   @id @default(uuid())
+  lessonId        String
+  userId          String
+  watchDuration   Int      // seconds watched
+  totalDuration   Int      // total lesson duration in seconds
+  completionRate  Float    // percentage completed
+  lastWatchedAt   DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lesson          Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([lessonId])
+  @@index([userId])
+  @@index([completionRate])
+  @@map("lesson_watch_analytics")
+}
+
+// Online User Sessions
+model OnlineSession {
+  id          String   @id @default(uuid())
+  userId      String
+  sessionId   String   @unique
+  ipAddress   String?
+  userAgent   String?
+  lastActivityAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([lastActivityAt])
+  @@map("online_session")
 }

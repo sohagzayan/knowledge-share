@@ -21,6 +21,19 @@ import {
   IconReceipt,
   IconArticle,
   IconKey,
+  IconSchool,
+  IconBook,
+  IconCurrencyDollar,
+  IconActivity,
+  IconShield,
+  IconChartLine,
+  IconFileCheck,
+  IconUsersGroup,
+  IconClock,
+  IconTrophy,
+  IconEye,
+  IconAlertTriangle,
+  IconDatabase,
 } from "@tabler/icons-react";
 import Logo from "@/public/logo.png";
 
@@ -114,6 +127,55 @@ const allNavMainItems = [
     url: "/admin/membership",
     icon: IconKey,
     requiresMembership: true, // Show when user has SuperAdmin membership but role is admin
+  },
+  // Superadmin-only features
+  {
+    title: "Teacher Performance",
+    url: "/superadmin/teachers",
+    icon: IconSchool,
+    requiresSuperAdmin: true,
+  },
+  {
+    title: "Course Analytics",
+    url: "/superadmin/courses/analytics",
+    icon: IconChartLine,
+    requiresSuperAdmin: true,
+  },
+  {
+    title: "Content Audit",
+    url: "/superadmin/content-audit",
+    icon: IconFileCheck,
+    requiresSuperAdmin: true,
+  },
+  {
+    title: "Financial Analytics",
+    url: "/superadmin/financial",
+    icon: IconCurrencyDollar,
+    requiresSuperAdmin: true,
+  },
+  {
+    title: "Engagement Analytics",
+    url: "/superadmin/engagement",
+    icon: IconActivity,
+    requiresSuperAdmin: true,
+  },
+  {
+    title: "User Management",
+    url: "/superadmin/users",
+    icon: IconUsersGroup,
+    requiresSuperAdmin: true,
+  },
+  {
+    title: "Security & Logs",
+    url: "/superadmin/security",
+    icon: IconShield,
+    requiresSuperAdmin: true,
+  },
+  {
+    title: "System Config",
+    url: "/superadmin/config",
+    icon: IconDatabase,
+    requiresSuperAdmin: true,
   },
 ];
 
