@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { PublicCourseType } from "@/app/data/course/get-all-courses";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,90 +7,38 @@ import { useConstructUrl } from "@/hooks/use-construct-url";
 import { Star, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 
 interface TrendingCoursesSectionProps {
   courses: PublicCourseType[];
 }
 
-export default function TrendingCoursesSection({ courses }: TrendingCoursesSectionProps) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { ref: sectionRef, isVisible } = useRevealOnScroll<HTMLElement>();
-  const [canScrollRight, setCanScrollRight] = useState(true);
-
-  useEffect(() => {
-    const checkScroll = () => {
-      if (scrollContainerRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-        setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-      }
-    };
-
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.addEventListener("scroll", checkScroll);
-      checkScroll();
-    }
-
-    return () => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.removeEventListener("scroll", checkScroll);
-      }
-    };
-  }, []);
-
-  const scrollRight = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({
-        left: 400,
-        behavior: "smooth",
-      });
-    }
-  };
-
+export default function TrendingCoursesSection({
+  courses,
+}: TrendingCoursesSectionProps) {
   const trendingCourses = courses.slice(0, 8);
 
   return (
-    <section ref={sectionRef} className="py-16 sm:py-20 lg:py-24 px-4 overflow-hidden">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div
-          className={`mb-8 transition-all duration-1000 ease-out ${
-            isVisible
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-8"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold">
-              Trending courses
-            </h2>
-            {canScrollRight && (
-              <button
-                onClick={scrollRight}
-                className="hidden md:flex items-center justify-center w-12 h-12 rounded-full bg-background border border-border hover:bg-accent hover:border-primary/50 transition-all duration-300 hover:scale-110 shadow-lg"
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+    <section className="py-20">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-2xl font-semibold mb-3">Trending courses</h2>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Discover the most popular courses that learners are taking right now.
+          </p>
         </div>
-
-        {/* Courses Grid */}
-        <div className="relative">
-          <div
-            ref={scrollContainerRef}
-            className="flex gap-6 overflow-x-auto pb-4 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {trendingCourses.map((course) => (
+            <CourseCard key={course.id} course={course} />
+          ))}
+        </div>
+        <div className="text-center mt-8">
+          <Link
+            href="/courses"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition"
           >
-            {trendingCourses.map((course, index) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                index={index}
-                isVisible={isVisible}
-              />
-            ))}
-          </div>
+            View all courses
+            <ChevronRight className="w-4 h-4" />
+          </Link>
         </div>
       </div>
     </section>
@@ -110,88 +57,54 @@ function getReviewCount(courseId: string): number {
   return Math.abs(hash % 490000) + 10000;
 }
 
-function CourseCard({
-  course,
-  index,
-  isVisible,
-}: {
-  course: PublicCourseType;
-  index: number;
-  isVisible: boolean;
-}) {
+function CourseCard({ course }: { course: PublicCourseType }) {
   const thumbnailUrl = useConstructUrl(course.fileKey);
   const originalPrice = Math.round(course.price * 1.5);
   const reviewCount = getReviewCount(course.id);
 
   return (
-    <div
-      className={`flex-shrink-0 w-[280px] sm:w-[320px] transition-all duration-1000 ease-out ${
-        isVisible
-          ? "opacity-100 translate-y-0"
-          : "opacity-0 translate-y-12"
-      }`}
-      style={{ transitionDelay: `${index * 100}ms` }}
-    >
-      <Card className="group relative overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl h-full flex flex-col">
-        {/* Bestseller Badge */}
-        <Badge className="absolute top-3 left-3 z-10 bg-blue-600 hover:bg-blue-600 text-white">
-          Bestseller
-        </Badge>
+    <Card className="group overflow-hidden border-0 bg-card hover:shadow-xl transition-all duration-300">
+      {/* Course Image */}
+      <div className="relative aspect-video overflow-hidden bg-muted">
+        <Image
+          width={600}
+          height={400}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          src={thumbnailUrl}
+          alt={course.title}
+        />
+      </div>
 
-        {/* Course Image */}
-        <div className="relative aspect-video overflow-hidden">
-          <Image
-            width={600}
-            height={400}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-            src={thumbnailUrl}
-            alt={course.title}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <CardContent className="p-5 space-y-3">
+        {/* Course Title */}
+        <Link
+          href={`/courses/${course.slug}`}
+          className="font-semibold text-base leading-tight line-clamp-2 hover:text-primary transition-colors block"
+        >
+          {course.title}
+        </Link>
+
+        {/* Rating */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+            <span className="text-sm font-medium text-foreground">4.7</span>
+          </div>
+          <span className="text-sm text-muted-foreground">
+            ({Math.floor(reviewCount / 1000)}k)
+          </span>
         </div>
 
-        <CardContent className="p-4 flex-1 flex flex-col">
-          {/* Course Title */}
-          <Link
-            href={`/courses/${course.slug}`}
-            className="font-semibold text-base sm:text-lg line-clamp-2 hover:text-primary transition-colors mb-2 group-hover:underline"
-          >
-            {course.title}
-          </Link>
-
-          {/* Instructor - Placeholder */}
-          <p className="text-sm text-muted-foreground mb-3">
-            KnowledgeShare Instructor
-          </p>
-
-          {/* Rating */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-1">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm font-semibold">4.7</span>
-            </div>
-            <span className="text-sm text-muted-foreground">
-              ({reviewCount.toLocaleString()})
-            </span>
-          </div>
-
-          {/* Price */}
-          <div className="flex items-center gap-2 mb-4 mt-auto">
-            <span className="text-xl font-bold text-foreground">
-              ${(course.price / 100).toFixed(2)}
-            </span>
-            <span className="text-sm text-muted-foreground line-through">
-              ${(originalPrice / 100).toFixed(2)}
-            </span>
-          </div>
-
-          {/* Level Badge */}
-          <Badge variant="outline" className="w-fit">
-            {course.level}
-          </Badge>
-        </CardContent>
-      </Card>
-    </div>
+        {/* Price */}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-lg font-semibold text-foreground">
+            ${(course.price / 100).toFixed(2)}
+          </span>
+          <span className="text-sm text-muted-foreground line-through">
+            ${(originalPrice / 100).toFixed(2)}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
-

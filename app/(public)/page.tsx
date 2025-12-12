@@ -1,8 +1,12 @@
 import Hero from "./_components/Hero";
 import WhyLearnSection from "./_components/WhyLearnSection";
 import FeaturesSection from "./_components/FeaturesSection";
-import CTASection from "./_components/CTASection";
 import TrendingCoursesSection from "./_components/TrendingCoursesSection";
+import WhyChooseSection from "./_components/WhyChooseSection";
+import EverythingInOnePlaceSection from "./_components/EverythingInOnePlaceSection";
+import PricingSection from "./_components/PricingSection";
+import FAQSection from "./_components/FAQSection";
+import InfrastructureSection from "./_components/InfrastructureSection";
 import { getAllCourses } from "@/app/data/course/get-all-courses";
 import Image from "next/image";
 
@@ -30,9 +34,17 @@ export default async function Home() {
 
       <TrendingCoursesSection courses={courses} />
 
+      <WhyChooseSection />
+
+      <EverythingInOnePlaceSection />
+
       <FeaturesSection />
 
-      <CTASection />
+      <PricingSection />
+
+      <InfrastructureSection />
+
+      <FAQSection />
     </>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 
 interface FeatureCardProps {
   number: string;
@@ -14,58 +13,41 @@ const featureCards: FeatureCardProps[] = [
     number: "01",
     title: "Learn the latest skills",
     description:
-      "Cursus sit amet dictum sit amet justo donec",
+      "Access cutting-edge courses designed by industry experts to keep you ahead of the curve.",
   },
   {
     number: "02",
     title: "Get ready for a career",
     description:
-      "Cursus sit amet dictum sit amet justo donec",
+      "Build practical skills and real-world projects that employers are looking for.",
   },
   {
     number: "03",
     title: "Earn a Certificate",
     description:
-      "Cursus sit amet dictum sit amet justo donec",
+      "Receive recognized certificates upon completion to showcase your achievements.",
   },
   {
     number: "04",
     title: "Upskill your organization",
     description:
-      "Cursus sit amet dictum sit amet justo donec",
+      "Empower your team with comprehensive training programs tailored to your needs.",
   },
 ];
 
 export default function WhyLearnSection() {
-  const { ref, isVisible } = useRevealOnScroll<HTMLElement>();
-
   return (
-    <section ref={ref} className="py-20 px-4">
-      <div className="max-w-7xl mx-auto">
+    <section className="py-20 px-4">
+      <div className="max-w-5xl mx-auto">
         {/* Header Section */}
-        <div className="text-center mb-16">
-          <p
-            className={`text-sm md:text-base font-semibold uppercase tracking-wider mb-4 transition-all duration-1000 ease-out ${
-              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-            }`}
-            style={{ transitionDelay: "0.1s", color: "#22d172" }}
-          >
+        <div className="text-center mb-12">
+          <p className="text-sm font-medium uppercase tracking-wider mb-4 text-emerald-500">
             WHY LEARN WITH US
           </p>
-          <h2
-            className={`text-3xl md:text-4xl lg:text-5xl font-bold mb-6 transition-all duration-1000 ease-out ${
-              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-            }`}
-            style={{ transitionDelay: "0.2s" }}
-          >
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">
             Build better skills, faster
           </h2>
-          <p
-            className={`max-w-2xl mx-auto text-muted-foreground text-base md:text-lg transition-all duration-1000 ease-out ${
-              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-            }`}
-            style={{ transitionDelay: "0.3s" }}
-          >
+          <p className="max-w-2xl mx-auto text-muted-foreground text-base md:text-lg">
             Explore new skills, deepen existing passions, and get lost in
             creativity. What you find just might surprise and inspire you.
           </p>
@@ -76,18 +58,10 @@ export default function WhyLearnSection() {
           {featureCards.map((card, index) => (
             <Card
               key={index}
-              className={`border border-border hover:border-primary/50 transition-all duration-500 rounded-lg ${
-                isVisible
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-8"
-              }`}
-              style={{ transitionDelay: `${0.4 + index * 0.1}s` }}
+              className="border border-border/50 bg-card hover:border-border transition-all duration-300"
             >
               <CardHeader>
-                <div 
-                  className="w-16 h-16 rounded-lg flex items-center justify-center mb-4"
-                  style={{ backgroundColor: "#22d172" }}
-                >
+                <div className="w-16 h-16 rounded-lg flex items-center justify-center mb-4 bg-emerald-500">
                   <span className="text-white text-2xl font-bold">
                     {card.number}
                   </span>
@@ -95,7 +69,9 @@ export default function WhyLearnSection() {
                 <CardTitle className="text-xl">{card.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">{card.description}</p>
+                <p className="text-sm text-muted-foreground">
+                  {card.description}
+                </p>
               </CardContent>
             </Card>
           ))}
@@ -104,4 +80,3 @@ export default function WhyLearnSection() {
     </section>
   );
 }
-
