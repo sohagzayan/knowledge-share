@@ -33,6 +33,7 @@ import {
   IconEye,
   IconAlertTriangle,
   IconDatabase,
+  IconInbox,
 } from "@tabler/icons-react";
 import Logo from "@/public/logo.png";
 
@@ -250,11 +251,16 @@ const data = {
       url: "/admin/settings",
       icon: IconSettings,
     },
-    {
-      title: "Get Help",
-      url: "/admin/get-help",
-      icon: IconHelp,
-    },
+  {
+    title: "Get Help",
+    url: "/admin/get-help",
+    icon: IconHelp,
+  },
+  {
+    title: "My Help Requests",
+    url: "/admin/help-requests",
+    icon: IconInbox,
+  },
   ],
 };
 

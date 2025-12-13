@@ -2,6 +2,7 @@
 
 import { requireAdmin } from "@/app/data/admin/require-admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { IconMail, IconPhone } from "@tabler/icons-react";
 import { HelpRequestForm } from "./_components/HelpRequestForm";
 
@@ -36,8 +37,15 @@ export default async function GetHelpPage() {
 
       <Card className="border-border/60 bg-gradient-to-br from-background/98 via-background/95 to-background shadow-md shadow-black/5">
         <CardHeader>
-          <CardTitle>Send us a message</CardTitle>
-          <CardDescription>We&apos;ll follow up via email with an answer.</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Send us a message</CardTitle>
+              <CardDescription>We&apos;ll follow up via email with an answer.</CardDescription>
+            </div>
+            <Button variant="outline" asChild>
+              <a href="/admin/help-requests">View My Requests</a>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <HelpRequestForm 

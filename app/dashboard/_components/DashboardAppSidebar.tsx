@@ -56,6 +56,11 @@ const navMain = [
     url: "/dashboard/orders",
     icon: IconReceipt,
   },
+  {
+    title: "My Help Requests",
+    url: "/dashboard/help-requests",
+    icon: IconHelp,
+  },
 ];
 
 const data = {

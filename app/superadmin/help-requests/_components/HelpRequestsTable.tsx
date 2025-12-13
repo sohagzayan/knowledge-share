@@ -31,7 +31,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { updateHelpRequest } from "../../actions";
+import { updateHelpRequest } from "../actions";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "@/lib/date-utils";
 import { IconCheck, IconClock, IconX, IconMessageCircle } from "@tabler/icons-react";
@@ -44,6 +44,8 @@ interface HelpRequest {
   status: "Pending" | "InProgress" | "Resolved" | "Closed";
   response: string | null;
   respondedAt: Date | null;
+  userReply: string | null;
+  userRepliedAt: Date | null;
   createdAt: Date;
   user: {
     id: string;
@@ -300,6 +302,20 @@ export function HelpRequestsTable({ initialRequests, initialStatus }: HelpReques
                   {selectedRequest.respondedAt && (
                     <p className="text-xs text-muted-foreground">
                       Responded {formatDistanceToNow(new Date(selectedRequest.respondedAt), { addSuffix: true })}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {selectedRequest.userReply && (
+                <div className="space-y-2">
+                  <Label>User&apos;s Reply</Label>
+                  <div className="p-3 bg-primary/10 rounded-md border border-primary/20 whitespace-pre-wrap">
+                    {selectedRequest.userReply}
+                  </div>
+                  {selectedRequest.userRepliedAt && (
+                    <p className="text-xs text-muted-foreground">
+                      User replied {formatDistanceToNow(new Date(selectedRequest.userRepliedAt), { addSuffix: true })}
                     </p>
                   )}
                 </div>
