@@ -10,108 +10,88 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signIn } from "next-auth/react";
-
-import { GithubIcon, Loader, Loader2 } from "lucide-react";
+import { Loader2, Mail, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 export function LoginForm() {
   const router = useRouter();
-  const [githubPending, startGithubTransition] = useTransition();
-  const [passwordPending, startPasswordTransition] = useTransition();
-  const [identifier, setIdentifier] = useState("");
+  const [loginPending, startLoginTransition] = useTransition();
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  async function signInWithGithub() {
-    startGithubTransition(async () => {
-      try {
-        await signIn("github", {
-          callbackUrl: "/",
-        });
-      } catch (error) {
-        toast.error("Failed to sign in with GitHub");
-        console.error("GitHub sign in error:", error);
-      }
-    });
-  }
-
-  async function signInWithPassword() {
-    if (!identifier || !password) {
-      toast.error("Please enter username/email and password");
+  async function signInWithCredentials() {
+    if (!emailOrUsername) {
+      toast.error("Please enter your email or username");
       return;
     }
 
-    startPasswordTransition(async () => {
+    if (!password) {
+      toast.error("Please enter your password");
+      return;
+    }
+
+    // Validate email format if it looks like an email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmail = emailRegex.test(emailOrUsername.trim());
+
+    startLoginTransition(async () => {
       try {
-        const result = await signIn("credentials", {
-          email: identifier.trim(),
-          password: password,
-          redirect: false,
+        const response = await fetch("/api/auth/email/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            emailOrUsername: emailOrUsername.trim(),
+            password: password,
+          }),
         });
 
-        if (result?.error) {
-          toast.error("Invalid username/email or password");
-        } else if (result?.ok) {
-          toast.success("Login successful! Redirecting...");
-          router.push("/");
-          router.refresh();
+        const result = await response.json();
+
+        if (response.ok && result.status === "success") {
+          toast.success("Verification code sent to your email!");
+          router.push(`/verify-request?email=${encodeURIComponent(result.email)}`);
+        } else {
+          toast.error(result.message || "Failed to send verification code");
         }
       } catch (error) {
         toast.error("An unexpected error occurred. Please try again.");
-        console.error("Password login error:", error);
+        console.error("Login error:", error);
       }
     });
   }
+
   return (
     <Card>
-        <CardHeader>
+      <CardHeader>
         <CardTitle className="text-xl">Welcome Back!</CardTitle>
         <CardDescription>
-          Login with your GitHub account or email/password
+          Enter your credentials to receive a verification code
         </CardDescription>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
-        <Button
-          disabled={githubPending}
-          onClick={signInWithGithub}
-          className="w-full"
-          variant="outline"
-        >
-          {githubPending ? (
-            <>
-              <Loader className="size-4 animate-spin" />
-              <span>Loading...</span>
-            </>
-          ) : (
-            <>
-              <GithubIcon className="size-4" />
-              Sign in with GitHub
-            </>
-          )}
-        </Button>
-
-        <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
-          <span className="relative z-10 bg-card px-2 text-muted-foreground">
-            Or continue with
-          </span>
-        </div>
-
-        {/* Password Login */}
         <div className="flex flex-col gap-3">
           <div className="grid gap-2">
-            <Label htmlFor="identifier">Username or Email</Label>
+            <Label htmlFor="emailOrUsername">Email or Username</Label>
             <Input
-              id="identifier"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              id="emailOrUsername"
+              value={emailOrUsername}
+              onChange={(e) => setEmailOrUsername(e.target.value)}
               type="text"
-              placeholder="username or email@example.com"
+              placeholder="your.email@example.com or username"
               required
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && password) {
+                  signInWithCredentials();
+                }
+              }}
             />
           </div>
+
           <div className="grid gap-2">
             <Label htmlFor="password">Password</Label>
             <Input
@@ -119,30 +99,34 @@ export function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"
-              placeholder="••••••"
+              placeholder="Enter your password"
               required
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  signInWithPassword();
+                if (e.key === "Enter" && emailOrUsername && password) {
+                  signInWithCredentials();
                 }
               }}
             />
           </div>
 
-          <Button onClick={signInWithPassword} disabled={passwordPending}>
-            {passwordPending ? (
+          <Button onClick={signInWithCredentials} disabled={loginPending}>
+            {loginPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                <span>Loading...</span>
+                <span>Verifying...</span>
               </>
             ) : (
               <>
-                <Loader2 className="size-4" />
-                <span>Login with Password</span>
+                <Lock className="size-4" />
+                <span>Continue</span>
               </>
             )}
           </Button>
         </div>
+
+        <p className="text-xs text-center text-muted-foreground">
+          We'll send you a 6-digit verification code to sign in securely
+        </p>
       </CardContent>
     </Card>
   );

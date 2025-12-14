@@ -1,152 +1,99 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { z } from "zod";
+import { randomUUID } from "crypto";
 
-const verifyEmailOtpSchema = z.object({
-  email: z.string().email(),
-  otp: z.string().length(6, "OTP must be 6 digits"),
-});
-
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
-    const validation = verifyEmailOtpSchema.safeParse(body);
+    const body = await request.json();
+    const { email, otp } = body;
 
-    if (!validation.success) {
+    if (!email || !otp) {
       return NextResponse.json(
-        {
-          status: "error",
-          message: validation.error.errors.map((e) => e.message).join(", "),
-        },
+        { status: "error", message: "Email and OTP are required" },
         { status: 400 }
       );
     }
 
-    const { email, otp } = validation.data;
-    const normalizedEmail = email.toLowerCase().trim();
-
     // Find verification record
-    const verification = await prisma.verification.findFirst({
+    const verification = await prisma.verification.findUnique({
       where: {
-        identifier: normalizedEmail,
-        expiresAt: {
-          gt: new Date(), // Not expired
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
+        identifier: email,
       },
     });
 
     if (!verification) {
       return NextResponse.json(
-        {
-          status: "error",
-          message: "Invalid or expired verification code. Please request a new one.",
-        },
+        { status: "error", message: "No verification code found. Please request a new one." },
         { status: 400 }
       );
     }
 
-    // Parse verification data
-    let verificationData: {
-      userId?: string;
-      email: string;
-      otp: string;
-      type?: string;
-    };
-
-    try {
-      verificationData = JSON.parse(verification.value);
-    } catch {
+    // Check if OTP is expired
+    if (new Date() > verification.expiresAt) {
+      await prisma.verification.delete({
+        where: { identifier: email },
+      });
       return NextResponse.json(
-        {
-          status: "error",
-          message: "Invalid verification data. Please try again.",
-        },
+        { status: "error", message: "Verification code has expired. Please request a new one." },
         { status: 400 }
       );
     }
 
     // Verify OTP
-    if (verificationData.otp !== otp) {
+    if (verification.value !== otp) {
       return NextResponse.json(
-        {
-          status: "error",
-          message: "Invalid verification code. Please check and try again.",
-        },
+        { status: "error", message: "Invalid verification code" },
         { status: 400 }
       );
     }
 
-    // Verify email matches
-    if (verificationData.email !== normalizedEmail) {
-      return NextResponse.json(
-        {
-          status: "error",
-          message: "Email mismatch. Please use the same email.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Get or create user
-    let user = await prisma.user.findFirst({
-      where: { email: normalizedEmail },
+    // Find or create user
+    let user = await prisma.user.findUnique({
+      where: { email },
     });
 
     if (!user) {
-      // Create new user for email OTP login
+      // Create new user
+      const firstName = email.split("@")[0];
       user = await prisma.user.create({
         data: {
-          email: normalizedEmail,
-          firstName: normalizedEmail.split("@")[0],
-          username: normalizedEmail.split("@")[0] + Math.random().toString(36).substring(7),
-          role: "USER",
+          id: randomUUID(),
+          email,
+          firstName,
+          emailVerified: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
+      });
+    } else {
+      // Update email verified status
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true },
       });
     }
 
-    // Delete verification record
+    // Delete used verification code
     await prisma.verification.delete({
-      where: { id: verification.id },
+      where: { identifier: email },
     });
 
-    // Create a session token for NextAuth sign-in
-    const sessionToken = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-    
-    // Store session token
-    await prisma.verification.create({
-      data: {
-        id: sessionToken,
-        identifier: user.email,
-        value: JSON.stringify({ 
-          userId: user.id, 
-          email: user.email,
-          type: "session-token",
-          verified: true 
-        }),
-        expiresAt: expiresAt,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-
+    // Return success - the client will handle NextAuth signIn
     return NextResponse.json({
       status: "success",
-      message: "Email verified successfully. Signing you in...",
-      email: user.email,
-      sessionToken: sessionToken,
+      message: "OTP verified successfully",
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.firstName,
+      },
     });
   } catch (error) {
-    console.error("Verify email OTP error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
+    console.error("Verify OTP error:", error);
     return NextResponse.json(
       {
         status: "error",
-        message: `Failed to verify OTP: ${errorMessage}`,
+        message: "An unexpected error occurred. Please try again.",
       },
       { status: 500 }
     );
