@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 import arcjet, { createMiddleware, detectBot } from "@arcjet/next";
 
 // Configure Arcjet
@@ -25,11 +25,14 @@ const aj = arcjet({
   ],
 });
 
-// Your existing authentication middleware
+// Lightweight authentication middleware using JWT token (Edge-compatible)
 async function authMiddleware(request: NextRequest) {
-  const session = await auth();
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
 
-  if (!session) {
+  if (!token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
