@@ -24,7 +24,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         sameSite: "lax",
         path: "/",
         secure: process.env.NODE_ENV === "production",
-        // Don't set domain explicitly to allow cookies to work on all Vercel subdomains
       },
     },
   },

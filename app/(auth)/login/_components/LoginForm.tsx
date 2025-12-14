@@ -45,26 +45,18 @@ export function LoginForm() {
 
     startPasswordTransition(async () => {
       try {
-        // First, verify password and send OTP
-        const response = await fetch("/api/auth/password/send-otp", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            identifier: identifier.trim(),
-            password: password,
-          }),
+        const result = await signIn("credentials", {
+          email: identifier.trim(),
+          password: password,
+          redirect: false,
         });
 
-        const result = await response.json();
-
-        if (result.status === "success") {
-          toast.success("Verification code sent to your email");
-          // Redirect to OTP verification page
-          router.push(`/verify-request?email=${encodeURIComponent(result.email)}&type=password`);
-        } else {
-          toast.error(result.message || "Invalid username/email or password");
+        if (result?.error) {
+          toast.error("Invalid username/email or password");
+        } else if (result?.ok) {
+          toast.success("Login successful! Redirecting...");
+          router.push("/");
+          router.refresh();
         }
       } catch (error) {
         toast.error("An unexpected error occurred. Please try again.");

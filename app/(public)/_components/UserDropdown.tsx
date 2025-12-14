@@ -54,12 +54,8 @@ export function UserDropdown({ email, firstName, image, userRole }: iAppProps) {
         { icon: UserRound, label: "Settings", href: "/dashboard/settings" },
       ];
 
-  const handleNavigation = (href: string, e?: React.MouseEvent) => {
-    e?.preventDefault();
-    // Use full page navigation to ensure cookies are sent properly on Vercel
-    // This fixes the issue where session cookies aren't read correctly during client-side navigation
-    // Full page navigation ensures the server receives all cookies with the request
-    window.location.href = href;
+  const handleNavigation = (href: string) => {
+    router.push(href);
   };
 
   return (
@@ -96,7 +92,7 @@ export function UserDropdown({ email, firstName, image, userRole }: iAppProps) {
             return (
               <DropdownMenuItem 
                 key={`${item.href}-${index}`} 
-                onClick={(e) => handleNavigation(item.href, e)}
+                onClick={() => handleNavigation(item.href)}
                 className="cursor-pointer hover:bg-muted/50 focus:bg-muted/50 transition-colors"
               >
                 <Icon size={16} className="opacity-60" aria-hidden="true" />
