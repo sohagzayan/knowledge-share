@@ -26,6 +26,8 @@ export const env = createEnv({
     NEXTAUTH_URL: urlOrEmpty.optional(),
     AUTH_GITHUB_CLIENT_ID: z.string().optional(),
     AUTH_GITHUB_SECRET: z.string().optional(),
+    AUTH_GOOGLE_CLIENT_ID: z.string().optional(),
+    AUTH_GOOGLE_CLIENT_SECRET: z.string().optional(),
     BREVO_API_KEY: z.string().optional(),
     BREVO_SENDER_EMAIL: emailOrEmpty.optional(), // Required: Must be a verified sender email in Brevo
     BREVO_SENDER_NAME: z.string().optional(),

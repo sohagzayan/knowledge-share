@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         Back
       </Link>
 
-      <div className="flex w-full max-w-sm flex-col gap-6">
+      <div className="flex w-full max-w-lg flex-col gap-6">
         <Link
           className="flex items-center gap-2 self-center font-medium"
           href="/"
