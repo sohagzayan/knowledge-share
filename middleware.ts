@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 
-// Lightweight authentication middleware
+// Lightweight cookie check - avoids importing heavy dependencies
+function hasSessionCookie(request: NextRequest): boolean {
+  const sessionToken = request.cookies.get("next-auth.session-token");
+  return !!sessionToken;
+}
+
+// Lightweight authentication middleware using dynamic import
 async function authMiddleware(request: NextRequest) {
+  // First, do a lightweight cookie check to avoid loading auth if no cookie exists
+  if (!hasSessionCookie(request)) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Only dynamically import auth when we have a cookie (reduces bundle size)
   try {
+    // Dynamic import prevents bundling Prisma/NextAuth into middleware
+    const { auth } = await import("@/lib/auth");
     const session = await auth();
 
     if (!session?.user) {
