@@ -88,11 +88,11 @@ export function otpEmailTemplate({ otp }: OtpTemplateParams) {
     <body>
       <div class="container">
         <div class="card">
-          <div class="brand-mark">KnowledgeShare</div>
+          <div class="brand-mark">Edupeak</div>
           <h1 class="title">Verify your email address</h1>
           <p class="subtitle">
             Enter the one-time passcode below to continue signing in to
-            KnowledgeShare. The code expires in 10 minutes for your security.
+            Edupeak. The code expires in 10 minutes for your security.
           </p>
           <div class="otp-box">${otp}</div>
           <p class="subtitle" style="margin-bottom: 6px;">
@@ -106,7 +106,7 @@ export function otpEmailTemplate({ otp }: OtpTemplateParams) {
           </div>
         </div>
         <div class="footer">
-          &copy; ${new Date().getFullYear()} KnowledgeShare. All rights
+          &copy; ${new Date().getFullYear()} Edupeak. All rights
           reserved.
         </div>
       </div>
@@ -205,7 +205,7 @@ export async function sendFollowUpEmail(params: FollowUpEmailParams): Promise<vo
   console.log("Email template:", followUpEmailTemplate(params));
   // Example implementation:
   // await resend.emails.send({
-  //   from: 'noreply@knowledgeshare.com',
+  //   from: 'noreply@edupeak.com',
   //   to: params.to,
   //   subject: `Continue Your Learning: ${params.courseName}`,
   //   html: followUpEmailTemplate(params),
@@ -231,7 +231,7 @@ export function invitationEmailTemplate({
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>You've been invited to join KnowledgeShare</title>
+      <title>You've been invited to join Edupeak</title>
       <style>
         body {
           background-color: #f8fafc;
@@ -317,10 +317,10 @@ export function invitationEmailTemplate({
     <body>
       <div class="container">
         <div class="card">
-          <div class="brand-mark">KnowledgeShare</div>
+          <div class="brand-mark">Edupeak</div>
           <h1 class="title">You've been invited!</h1>
           <p class="subtitle">
-            ${inviterName ? `${inviterName} has ` : "You have been "}invited to join KnowledgeShare as a <strong>${roleDisplay}</strong>.
+            ${inviterName ? `${inviterName} has ` : "You have been "}invited to join Edupeak as a <strong>${roleDisplay}</strong>.
           </p>
           <div class="role-badge">${roleDisplay}</div>
           <p class="subtitle">
@@ -344,7 +344,7 @@ export function invitationEmailTemplate({
           </div>
         </div>
         <div class="footer">
-          &copy; ${new Date().getFullYear()} KnowledgeShare. All rights
+          &copy; ${new Date().getFullYear()} Edupeak. All rights
           reserved.
         </div>
       </div>

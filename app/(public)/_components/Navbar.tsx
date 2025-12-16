@@ -180,7 +180,7 @@ export function Navbar() {
           className="flex items-center transition-transform duration-300 hover:scale-105"
         >
           <Image
-            alt="KnowledgeShare"
+            alt="Edupeak"
             loading="lazy"
             width={120}
             height={28}

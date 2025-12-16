@@ -28,7 +28,7 @@ export default async function GetHelpPage() {
           title="Email Support"
           description="We usually reply in under 6 hours"
           icon={<IconMail className="h-5 w-5" />}
-          actionLabel="support@knowledgeshare.com"
+          actionLabel="support@edupeak.com"
         />
         <SupportCard
           title="Live chat"

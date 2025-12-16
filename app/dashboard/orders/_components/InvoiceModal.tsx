@@ -165,12 +165,12 @@ export function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                     From
                   </h3>
                   <div className="space-y-1">
-                    <p className="text-lg font-bold">KnowledgeShare</p>
+                    <p className="text-lg font-bold">Edupeak</p>
                     <p className="text-sm text-muted-foreground">
                       Online Learning Platform
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Email: support@knowledgeshare.com
+                      Email: support@edupeak.com
                     </p>
                   </div>
                 </div>
@@ -260,7 +260,7 @@ export function InvoiceModal({ order, onClose }: InvoiceModalProps) {
 
               <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
                 <p className="text-sm font-semibold">Course Provider</p>
-                <p className="text-sm text-muted-foreground">KnowledgeShare</p>
+                <p className="text-sm text-muted-foreground">Edupeak</p>
               </div>
             </div>
           </motion.div>

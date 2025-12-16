@@ -51,10 +51,10 @@ export async function POST(request: NextRequest) {
         // Send OTP email
         const brevoClient = getBrevoClient();
         const sendSmtpEmail = new SendSmtpEmail();
-        sendSmtpEmail.subject = "Your KnowledgeShare Login Code";
+        sendSmtpEmail.subject = "Your Edupeak Login Code";
         sendSmtpEmail.htmlContent = otpEmailTemplate({ otp });
         sendSmtpEmail.sender = {
-          name: env.BREVO_SENDER_NAME || "KnowledgeShare",
+          name: env.BREVO_SENDER_NAME || "Edupeak",
           email: env.BREVO_SENDER_EMAIL || "sohag.zayan@gmail.com",
         };
         sendSmtpEmail.to = [{ email: email.toLowerCase().trim() }];
@@ -190,10 +190,10 @@ export async function POST(request: NextRequest) {
     const brevoClient = getBrevoClient();
     const sendSmtpEmail = new SendSmtpEmail();
 
-    sendSmtpEmail.subject = "Your KnowledgeShare Login Code";
+    sendSmtpEmail.subject = "Your Edupeak Login Code";
     sendSmtpEmail.htmlContent = otpEmailTemplate({ otp });
     sendSmtpEmail.sender = {
-      name: env.BREVO_SENDER_NAME || "KnowledgeShare",
+      name: env.BREVO_SENDER_NAME || "Edupeak",
       email: env.BREVO_SENDER_EMAIL || "sohag.zayan@gmail.com",
     };
     sendSmtpEmail.to = [{ email: userEmail }];

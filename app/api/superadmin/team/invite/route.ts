@@ -152,7 +152,7 @@ export async function POST(req: Request) {
       const sendSmtpEmail = new SendSmtpEmail();
 
       const senderEmail = env.BREVO_SENDER_EMAIL;
-      const senderName = env.BREVO_SENDER_NAME || "KnowledgeShare";
+      const senderName = env.BREVO_SENDER_NAME || "Edupeak";
 
       if (!senderEmail) {
         throw new Error("BREVO_SENDER_EMAIL is required");
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
         ? `${inviter.firstName}${inviter.lastName ? ` ${inviter.lastName}` : ""}`
         : undefined;
 
-      sendSmtpEmail.subject = `You've been invited to join KnowledgeShare as ${role}`;
+      sendSmtpEmail.subject = `You've been invited to join Edupeak as ${role}`;
       sendSmtpEmail.htmlContent = invitationEmailTemplate({
         invitationLink,
         role,

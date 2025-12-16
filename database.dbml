@@ -1,0 +1,716 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+// Edupeak LMS Database Schema
+
+// ============================================
+// USER MANAGEMENT TABLES
+// ============================================
+
+Table user {
+  id varchar [primary key, note: 'User unique identifier']
+  first_name varchar [not null]
+  last_name varchar
+  email varchar [unique, not null]
+  username varchar [unique]
+  phone_number varchar
+  designation varchar
+  bio text
+  social_website varchar
+  social_github varchar
+  social_facebook varchar
+  social_twitter varchar
+  social_linkedin varchar
+  email_verified boolean [not null]
+  image varchar
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+  stripe_customer_id varchar [unique]
+  role varchar
+  banned boolean
+  ban_reason text
+  ban_expires timestamp
+  points integer [default: 0]
+}
+
+Table billing_address {
+  id varchar [primary key, note: 'UUID']
+  first_name varchar [not null]
+  last_name varchar [not null]
+  company_name varchar
+  phone_number varchar
+  email varchar [not null]
+  address_line1 varchar [not null]
+  address_line2 varchar
+  city varchar [not null]
+  state varchar [not null]
+  postal_code varchar [not null]
+  country varchar [not null]
+  vat_number varchar
+  notes text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  user_id varchar [unique, not null]
+}
+
+Table session {
+  id varchar [primary key]
+  expires_at timestamp [not null]
+  token varchar [unique, not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+  ip_address varchar
+  user_agent varchar
+  user_id varchar [not null]
+  impersonated_by varchar
+}
+
+Table account {
+  id varchar [primary key]
+  account_id varchar [not null]
+  provider_id varchar [not null]
+  user_id varchar [not null]
+  access_token varchar
+  refresh_token varchar
+  id_token varchar
+  access_token_expires_at timestamp
+  refresh_token_expires_at timestamp
+  scope varchar
+  password varchar
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table verification {
+  id varchar [primary key]
+  identifier varchar [unique, not null]
+  value varchar [not null]
+  expires_at timestamp [not null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+// ============================================
+// COURSE MANAGEMENT TABLES
+// ============================================
+
+Table course {
+  id varchar [primary key, note: 'UUID']
+  title varchar [not null]
+  description text [not null]
+  file_key varchar [not null, note: 'S3 key for course image']
+  price integer [not null, note: 'Price in cents']
+  duration integer [not null, note: 'Duration in minutes']
+  level varchar [default: 'Beginner', note: 'Beginner, Intermediate, Advanced']
+  stripe_price_id varchar [unique, not null]
+  category varchar [not null]
+  small_description varchar [not null]
+  slug varchar [unique, not null]
+  status varchar [default: 'Draft', note: 'Draft, Published, Archived']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  user_id varchar [not null, note: 'Course creator/teacher']
+}
+
+Table chapter {
+  id varchar [primary key, note: 'UUID']
+  title varchar [not null]
+  position integer [not null]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  course_id varchar [not null]
+  release_at timestamp
+  status varchar [default: 'Draft', note: 'Draft, Scheduled, Published']
+}
+
+Table lesson {
+  id varchar [primary key, note: 'UUID']
+  title varchar [not null]
+  description text
+  thumbnail_key varchar [note: 'S3 key for thumbnail']
+  video_key varchar [note: 'S3 key for video']
+  position integer [not null]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  chapter_id varchar [not null]
+  status varchar [default: 'Draft', note: 'Draft, Scheduled, Published']
+  release_at timestamp
+}
+
+// ============================================
+// ENROLLMENT & LEARNING TABLES
+// ============================================
+
+Table enrollment {
+  id varchar [primary key, note: 'UUID']
+  amount integer [not null, note: 'Price in cents']
+  status varchar [default: 'Pending', note: 'Pending, Active, Cancelled']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  course_id varchar [not null]
+  user_id varchar [not null]
+  ban_reason text
+  ban_type varchar [note: 'Temporary, Permanent']
+  ban_until timestamp
+  banned boolean
+  follow_up_email_sent boolean [default: false]
+  last_activity_at timestamp
+  certificate_earned boolean [default: false]
+  certificate_issued_at timestamp
+  certificate_key varchar [unique, note: 'S3 key for certificate PDF']
+  certificate_revoked boolean [default: false]
+  certificate_revoked_at timestamp
+  tags text [note: 'Array of StudentTag enum values']
+}
+
+Table lesson_progress {
+  id varchar [primary key, note: 'UUID']
+  completed boolean [default: false]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  user_id varchar [not null]
+  lesson_id varchar [not null]
+}
+
+Table early_unlock {
+  id varchar [primary key, note: 'UUID']
+  unlocked_at timestamp [default: `now()`]
+  points_spent integer [not null]
+  user_id varchar [not null]
+  chapter_id varchar
+  lesson_id varchar
+}
+
+Table student_activity {
+  id varchar [primary key, note: 'UUID']
+  type varchar [not null, note: 'ActivityType enum']
+  description text
+  metadata json
+  created_at timestamp [default: `now()`]
+  enrollment_id varchar [not null]
+}
+
+Table student_badge {
+  id varchar [primary key, note: 'UUID']
+  badge_type varchar [not null, note: 'StudentBadgeType enum']
+  earned_at timestamp [default: `now()`]
+  metadata json
+  enrollment_id varchar [not null]
+}
+
+Table login_session {
+  id varchar [primary key, note: 'UUID']
+  device varchar
+  browser varchar
+  country varchar
+  ip_address varchar
+  user_agent varchar
+  logged_in_at timestamp [default: `now()`]
+  enrollment_id varchar [not null]
+}
+
+// ============================================
+// ASSESSMENT TABLES
+// ============================================
+
+Table assignment {
+  id varchar [primary key, note: 'UUID']
+  title varchar [not null]
+  description text
+  file_key varchar [note: 'S3 key for assignment file']
+  points integer [default: 100]
+  due_date timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  lesson_id varchar [unique, not null]
+}
+
+Table assignment_submission {
+  id varchar [primary key, note: 'UUID']
+  file_key varchar [note: 'S3 key for submission file']
+  status varchar [default: 'Pending', note: 'Pending, Graded, Returned']
+  grade integer
+  feedback text
+  submitted_at timestamp [default: `now()`]
+  updated_at timestamp
+  assignment_id varchar [not null]
+  user_id varchar [not null]
+  description text
+  link varchar
+  submission_count integer [default: 1]
+}
+
+Table quiz {
+  id varchar [primary key, note: 'UUID']
+  title varchar
+  points integer [default: 10]
+  required boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  lesson_id varchar [unique, not null]
+}
+
+Table quiz_question {
+  id varchar [primary key, note: 'UUID']
+  question varchar [not null]
+  options text [not null, note: 'Array of answer options']
+  correct_answer integer [not null, note: 'Index of correct answer (0-based)']
+  position integer [not null]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  quiz_id varchar [not null]
+}
+
+Table quiz_submission {
+  id varchar [primary key, note: 'UUID']
+  score integer [not null, note: 'Percentage score']
+  total_questions integer [not null]
+  correct_answers integer [not null]
+  points_earned integer [not null]
+  submitted_at timestamp [default: `now()`]
+  updated_at timestamp
+  quiz_id varchar [not null]
+  user_id varchar [not null]
+  answers json [not null, note: 'User answers: {questionId: selectedOptionIndex}']
+}
+
+// ============================================
+// BLOG & CONTENT TABLES
+// ============================================
+
+Table blog {
+  id varchar [primary key, note: 'UUID']
+  title varchar [not null]
+  slug varchar [unique, not null]
+  content text [not null, note: 'HTML content']
+  excerpt text
+  cover_image_key varchar [note: 'S3 key for cover image']
+  seo_title varchar
+  seo_description text
+  reading_time integer [default: 0, note: 'Reading time in minutes']
+  status varchar [default: 'Pending', note: 'Pending, Approved, Rejected, Published']
+  is_featured boolean [default: false]
+  is_draft boolean [default: false]
+  view_count integer [default: 0]
+  like_count integer [default: 0]
+  comment_count integer [default: 0]
+  points_required integer [default: 5]
+  points_spent integer [default: 0]
+  points_earned integer [default: 0]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  published_at timestamp
+  rejected_at timestamp
+  rejection_reason text
+  author_id varchar [not null]
+  category_id varchar
+  course_id varchar
+}
+
+Table blog_category {
+  id varchar [primary key, note: 'UUID']
+  name varchar [unique, not null]
+  slug varchar [unique, not null]
+  description text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table blog_tag {
+  id varchar [primary key, note: 'UUID']
+  name varchar [not null]
+  slug varchar [not null]
+  blog_id varchar [not null]
+  created_at timestamp [default: `now()`]
+}
+
+Table blog_comment {
+  id varchar [primary key, note: 'UUID']
+  content text [not null]
+  parent_id varchar [note: 'For threaded comments']
+  upvotes integer [default: 0]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  blog_id varchar [not null]
+  author_id varchar [not null]
+}
+
+Table blog_reaction {
+  id varchar [primary key, note: 'UUID']
+  type varchar [not null, note: 'Like, Love, Insightful, Funny']
+  created_at timestamp [default: `now()`]
+  blog_id varchar [not null]
+  user_id varchar [not null]
+}
+
+// ============================================
+// NOTIFICATION SYSTEM
+// ============================================
+
+Table notification {
+  id varchar [primary key, note: 'UUID']
+  type varchar [not null, note: 'NotificationType enum']
+  title varchar [not null]
+  message text [not null]
+  link varchar
+  read boolean [default: false]
+  created_at timestamp [default: `now()`]
+  user_id varchar [not null]
+}
+
+// ============================================
+// WORKSPACE & MULTI-TENANCY
+// ============================================
+
+Table workspace {
+  id varchar [primary key, note: 'UUID']
+  name varchar [default: 'Default Workspace']
+  slug varchar [unique, default: 'default']
+  description text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table membership {
+  id varchar [primary key, note: 'UUID']
+  user_id varchar [not null]
+  workspace_id varchar [not null]
+  role varchar [default: 'Member', note: 'Member, Admin, SuperAdmin']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table invitation {
+  id varchar [primary key, note: 'UUID']
+  token varchar [unique, not null]
+  email varchar [not null]
+  user_id varchar
+  workspace_id varchar [not null]
+  role varchar [not null, note: 'WorkspaceRole enum']
+  status varchar [default: 'Pending', note: 'Pending, Accepted, Expired, Revoked']
+  invited_by varchar [not null, note: 'User ID who sent invitation']
+  expires_at timestamp [not null]
+  accepted_at timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+// ============================================
+// ANNOUNCEMENT SYSTEM
+// ============================================
+
+Table announcement {
+  id varchar [primary key, note: 'UUID']
+  title varchar [not null]
+  body text [not null, note: 'HTML content']
+  created_by_id varchar [not null]
+  target_role varchar [not null, note: 'AnnouncementTargetRole enum']
+  target_course_id varchar
+  target_user_ids text [note: 'Array of user IDs']
+  scheduled_at timestamp
+  published_at timestamp
+  status varchar [default: 'Draft', note: 'Draft, Scheduled, Published, Expired']
+  is_urgent boolean [default: false]
+  attachment_keys text [note: 'Array of S3 keys']
+  view_count integer [default: 0]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table announcement_read_status {
+  id varchar [primary key, note: 'UUID']
+  user_id varchar [not null]
+  announcement_id varchar [not null]
+  read_at timestamp [default: `now()`]
+}
+
+// ============================================
+// SUPPORT & HELP DESK
+// ============================================
+
+Table support_call {
+  id varchar [primary key, note: 'UUID']
+  course_id varchar [not null]
+  created_by varchar [not null, note: 'Admin user ID']
+  stream_call_id varchar [unique, note: 'Stream.io call ID']
+  title varchar
+  description text
+  status varchar [default: 'Active', note: 'Active, Ended, Cancelled']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  ended_at timestamp
+}
+
+Table support_call_request {
+  id varchar [primary key, note: 'UUID']
+  support_call_id varchar [not null]
+  user_id varchar [not null]
+  support_type varchar [not null]
+  status varchar [default: 'Pending', note: 'Pending, Accepted, Rejected, Completed']
+  position integer [not null, note: 'Queue position']
+  joined_at timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table help_request {
+  id varchar [primary key, note: 'UUID']
+  user_id varchar [not null]
+  subject varchar [not null]
+  message text [not null]
+  user_type varchar [not null, note: 'Teacher, Student, Admin']
+  status varchar [default: 'Pending', note: 'Pending, InProgress, Resolved, Closed']
+  response text
+  responded_at timestamp
+  user_reply text
+  user_replied_at timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+// ============================================
+// ADMINISTRATION TABLES
+// ============================================
+
+Table teacher_application {
+  id varchar [primary key, note: 'UUID']
+  user_id varchar [not null]
+  status varchar [default: 'Pending', note: 'Pending, Approved, Rejected']
+  application_data json [not null]
+  rejection_reason text
+  reviewed_by varchar
+  reviewed_at timestamp
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table activity_log {
+  id varchar [primary key, note: 'UUID']
+  user_id varchar [not null]
+  action varchar [not null, note: 'e.g., lesson_uploaded, course_updated']
+  entity_type varchar [not null, note: 'e.g., course, lesson, chapter']
+  entity_id varchar
+  metadata json
+  ip_address varchar
+  user_agent varchar
+  created_at timestamp [default: `now()`]
+}
+
+// ============================================
+// PAYMENT & BILLING
+// ============================================
+
+Table payment_transaction {
+  id varchar [primary key, note: 'UUID']
+  enrollment_id varchar [not null]
+  amount integer [not null, note: 'Amount in cents']
+  currency varchar [default: 'usd']
+  stripe_payment_id varchar [unique]
+  stripe_session_id varchar
+  status varchar [default: 'Pending', note: 'Pending, Completed, Failed, Refunded, Cancelled']
+  payment_method varchar
+  refunded boolean [default: false]
+  refund_amount integer
+  refund_reason text
+  refunded_at timestamp
+  metadata json
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+// ============================================
+// RATINGS & REVIEWS
+// ============================================
+
+Table course_rating {
+  id varchar [primary key, note: 'UUID']
+  course_id varchar [not null]
+  user_id varchar [not null]
+  rating integer [not null, note: 'Rating 1-5']
+  comment text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+// ============================================
+// ANALYTICS & TRACKING
+// ============================================
+
+Table search_analytics {
+  id varchar [primary key, note: 'UUID']
+  user_id varchar
+  query varchar [not null]
+  results_count integer [default: 0]
+  clicked_result varchar [note: 'Course ID or lesson ID']
+  ip_address varchar
+  user_agent varchar
+  created_at timestamp [default: `now()`]
+}
+
+Table login_history {
+  id varchar [primary key, note: 'UUID']
+  user_id varchar [not null]
+  ip_address varchar
+  user_agent varchar
+  country varchar
+  city varchar
+  success boolean [default: true]
+  failure_reason text
+  device_info json
+  created_at timestamp [default: `now()`]
+}
+
+Table error_log {
+  id varchar [primary key, note: 'UUID']
+  user_id varchar
+  error_type varchar [not null, note: 'e.g., API_ERROR, VALIDATION_ERROR']
+  status_code integer
+  message text [not null]
+  stack text
+  endpoint varchar
+  method varchar
+  metadata json
+  created_at timestamp [default: `now()`]
+}
+
+Table lesson_watch_analytics {
+  id varchar [primary key, note: 'UUID']
+  lesson_id varchar [not null]
+  user_id varchar [not null]
+  watch_duration integer [not null, note: 'Seconds watched']
+  total_duration integer [not null, note: 'Total lesson duration in seconds']
+  completion_rate float [not null, note: 'Percentage completed']
+  last_watched_at timestamp [default: `now()`]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+Table online_session {
+  id varchar [primary key, note: 'UUID']
+  user_id varchar [not null]
+  session_id varchar [unique, not null]
+  ip_address varchar
+  user_agent varchar
+  last_activity_at timestamp [default: `now()`]
+  created_at timestamp [default: `now()`]
+}
+
+// ============================================
+// SYSTEM CONFIGURATION
+// ============================================
+
+Table system_config {
+  id varchar [primary key, note: 'UUID']
+  key varchar [unique, not null]
+  value json [not null]
+  description text
+  updated_by varchar
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+}
+
+// ============================================
+// RELATIONSHIPS (Foreign Keys)
+// ============================================
+
+// User Management Relationships
+Ref: billing_address.user_id > user.id [delete: cascade]
+Ref: session.user_id > user.id [delete: cascade]
+Ref: account.user_id > user.id [delete: cascade]
+
+// Course Management Relationships
+Ref: course.user_id > user.id [delete: cascade]
+Ref: chapter.course_id > course.id [delete: cascade]
+Ref: lesson.chapter_id > chapter.id [delete: cascade]
+
+// Enrollment Relationships
+Ref: enrollment.course_id > course.id [delete: cascade]
+Ref: enrollment.user_id > user.id [delete: cascade]
+Ref: lesson_progress.user_id > user.id [delete: cascade]
+Ref: lesson_progress.lesson_id > lesson.id [delete: cascade]
+Ref: early_unlock.user_id > user.id [delete: cascade]
+Ref: early_unlock.chapter_id > chapter.id [delete: cascade]
+Ref: early_unlock.lesson_id > lesson.id [delete: cascade]
+Ref: student_activity.enrollment_id > enrollment.id [delete: cascade]
+Ref: student_badge.enrollment_id > enrollment.id [delete: cascade]
+Ref: login_session.enrollment_id > enrollment.id [delete: cascade]
+
+// Assessment Relationships
+Ref: assignment.lesson_id > lesson.id [delete: cascade]
+Ref: assignment_submission.assignment_id > assignment.id [delete: cascade]
+Ref: assignment_submission.user_id > user.id [delete: cascade]
+Ref: quiz.lesson_id > lesson.id [delete: cascade]
+Ref: quiz_question.quiz_id > quiz.id [delete: cascade]
+Ref: quiz_submission.quiz_id > quiz.id [delete: cascade]
+Ref: quiz_submission.user_id > user.id [delete: cascade]
+
+// Blog Relationships
+Ref: blog.author_id > user.id [delete: cascade]
+Ref: blog.category_id > blog_category.id [delete: set null]
+Ref: blog.course_id > course.id [delete: set null]
+Ref: blog_tag.blog_id > blog.id [delete: cascade]
+Ref: blog_comment.blog_id > blog.id [delete: cascade]
+Ref: blog_comment.author_id > user.id [delete: cascade]
+Ref: blog_comment.parent_id > blog_comment.id [delete: cascade, note: 'Threaded comments']
+Ref: blog_reaction.blog_id > blog.id [delete: cascade]
+Ref: blog_reaction.user_id > user.id [delete: cascade]
+
+// Notification Relationships
+Ref: notification.user_id > user.id [delete: cascade]
+
+// Workspace Relationships
+Ref: membership.user_id > user.id [delete: cascade]
+Ref: membership.workspace_id > workspace.id [delete: cascade]
+Ref: invitation.user_id > user.id [delete: set null]
+Ref: invitation.workspace_id > workspace.id [delete: cascade]
+
+// Announcement Relationships
+Ref: announcement.created_by_id > user.id [delete: cascade]
+Ref: announcement.target_course_id > course.id [delete: set null]
+Ref: announcement_read_status.user_id > user.id [delete: cascade]
+Ref: announcement_read_status.announcement_id > announcement.id [delete: cascade]
+
+// Support Relationships
+Ref: support_call.course_id > course.id [delete: cascade]
+Ref: support_call.created_by > user.id [delete: cascade]
+Ref: support_call_request.support_call_id > support_call.id [delete: cascade]
+Ref: support_call_request.user_id > user.id [delete: cascade]
+Ref: help_request.user_id > user.id [delete: cascade]
+
+// Administration Relationships
+Ref: teacher_application.user_id > user.id [delete: cascade]
+Ref: activity_log.user_id > user.id [delete: cascade]
+
+// Payment Relationships
+Ref: payment_transaction.enrollment_id > enrollment.id [delete: cascade]
+
+// Rating Relationships
+Ref: course_rating.course_id > course.id [delete: cascade]
+Ref: course_rating.user_id > user.id [delete: cascade]
+
+// Analytics Relationships
+Ref: search_analytics.user_id > user.id [delete: set null]
+Ref: login_history.user_id > user.id [delete: cascade]
+Ref: error_log.user_id > user.id [delete: set null]
+Ref: lesson_watch_analytics.lesson_id > lesson.id [delete: cascade]
+Ref: lesson_watch_analytics.user_id > user.id [delete: cascade]
+Ref: online_session.user_id > user.id [delete: cascade]
+
+// ============================================
+// UNIQUE CONSTRAINTS
+// ============================================
+
+// Note: DBML doesn't have explicit unique constraint syntax for composite keys
+// These are enforced at the application/database level:
+// - enrollment: (user_id, course_id)
+// - lesson_progress: (user_id, lesson_id)
+// - assignment_submission: (user_id, assignment_id)
+// - quiz_submission: (user_id, quiz_id)
+// - blog_reaction: (blog_id, user_id)
+// - course_rating: (user_id, course_id)
+// - support_call_request: (support_call_id, user_id)
+// - announcement_read_status: (user_id, announcement_id)
+// - student_badge: (enrollment_id, badge_type)
+// - early_unlock: (user_id, chapter_id, lesson_id)
+// - membership: (user_id, workspace_id)
+// - teacher_application: (user_id)
+// - lesson_watch_analytics: (user_id, lesson_id)

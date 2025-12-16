@@ -24,7 +24,7 @@ export default function Footer() {
           <div className="md:max-w-60">
             <Link href="/" className="block mb-4">
               <Image
-                alt="KnowledgeShare"
+                alt="Edupeak"
                 loading="lazy"
                 width={120}
                 height={28}
@@ -34,7 +34,7 @@ export default function Footer() {
               />
             </Link>
             <p className="text-xs text-muted-foreground mb-4">
-              Built for learners, KnowledgeShare gives you reliable, affordable
+              Built for learners, Edupeak gives you reliable, affordable
               learning infrastructure to master new skills.
             </p>
             <a
@@ -125,7 +125,7 @@ export default function Footer() {
         </div>
         <div className="flex items-center justify-between pt-8">
           <p className="text-xs text-muted-foreground">
-            © {currentYear} KnowledgeShare
+            © {currentYear} Edupeak
           </p>
           {mounted && (
             <button

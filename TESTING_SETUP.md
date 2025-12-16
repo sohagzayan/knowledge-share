@@ -50,7 +50,7 @@ npm run test:cypress:component:open     # Component UI
 ## 📁 Project Structure
 
 ```
-knowledge-share/
+edupeak/
 ├── tests/
 │   ├── setup/
 │   │   ├── vitest.setup.ts      # Vitest configuration
