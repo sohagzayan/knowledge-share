@@ -10,10 +10,6 @@ import { getUserRole } from "./get-user-role";
 import { useConstructUrl as constructFileUrl } from "@/hooks/use-construct-url";
 import Logo from "@/public/logo.png";
 
-const supportItems = [
-  { name: "Contact Support", href: "#" },
-  { name: "Hire an Expert", href: "#" },
-];
 
 const instructorItems = [
   { name: "Become an Instructor", href: "/become-an-instructor" },
@@ -209,13 +205,16 @@ export function Navbar() {
           >
             Creator Stories
           </Link>
-          {/* Hide Instructors and Get Support when logged in as admin */}
+          {/* Hide Instructors when logged in as admin */}
           {userRole !== "admin" && (
-            <>
-              <NavDropdown label="Instructors" items={instructorItems} />
-              <NavDropdown label="Get Support" items={supportItems} />
-            </>
+            <NavDropdown label="Instructors" items={instructorItems} />
           )}
+          <Link
+            href="/contact"
+            className="text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5"
+          >
+            Contact
+          </Link>
           <NavDropdown label="Students" items={studentItems} />
         </div>
 
