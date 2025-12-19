@@ -3,23 +3,19 @@ import "server-only";
 import { prisma } from "@/lib/db";
 
 export async function getAllInstructors() {
-  // Get users who have created courses (instructors) or have admin role
+  // Get all users with admin role
   const instructors = await prisma.user.findMany({
     where: {
-      OR: [
+      AND: [
         { role: "admin" },
-        { 
-          courses: {
-            some: {
-              status: "Published"
-            }
-          }
-        }
+        {
+          // Show users where banned is false, null, or not set (exclude only when banned is true)
+          OR: [
+            { banned: false },
+            { banned: null },
+          ],
+        },
       ],
-      // Exclude banned users
-      banned: {
-        not: true,
-      },
     },
     select: {
       id: true,
@@ -34,6 +30,7 @@ export async function getAllInstructors() {
       socialTwitter: true,
       socialWebsite: true,
       createdAt: true,
+      role: true,
       courses: {
         where: {
           status: "Published",
@@ -84,7 +81,7 @@ export async function getAllInstructors() {
         averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
       };
     })
-    .filter((instructor) => instructor.coursesCount > 0) // Only show instructors with published courses
+    // All fetched users are admins, no need to filter
     .sort((a, b) => {
       // Sort by total enrollments first, then by courses count
       if (b.totalEnrollments !== a.totalEnrollments) {

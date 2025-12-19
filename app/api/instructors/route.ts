@@ -3,24 +3,41 @@ import { prisma, withRetry } from "@/lib/db";
 
 export async function GET() {
   try {
+    // Debug: First, let's check all users with admin role (including banned ones for debugging)
+    const allAdminUsers = await withRetry(async () => {
+      return await prisma.user.findMany({
+        where: {
+          role: "admin",
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          banned: true,
+        },
+      });
+    }, 3, 1000);
+
+    console.log(`[Instructors API] Found ${allAdminUsers.length} users with admin role:`, 
+      allAdminUsers.map(u => ({ email: u.email, banned: u.banned, role: u.role }))
+    );
+
     // Use retry wrapper to handle transient connection failures
     const instructors = await withRetry(async () => {
       return await prisma.user.findMany({
         where: {
-          OR: [
+          AND: [
             { role: "admin" },
-            { 
-              courses: {
-                some: {
-                  status: "Published"
-                }
-              }
-            }
+            {
+              // Show users where banned is false, null, or not set (exclude only when banned is true)
+              OR: [
+                { banned: false },
+                { banned: null },
+              ],
+            },
           ],
-          // Exclude banned users
-          banned: {
-            not: true,
-          },
         },
         select: {
           id: true,
@@ -35,6 +52,7 @@ export async function GET() {
           socialTwitter: true,
           socialWebsite: true,
           createdAt: true,
+          role: true,
           courses: {
             where: {
               status: "Published",
@@ -63,6 +81,8 @@ export async function GET() {
       });
     }, 3, 1000);
 
+    console.log(`[Instructors API] After filtering banned users: ${instructors.length} instructors`);
+
     // Calculate instructor metrics
     const instructorsWithMetrics = instructors
       .map((instructor) => {
@@ -86,7 +106,7 @@ export async function GET() {
           averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
         };
       })
-      .filter((instructor) => instructor.coursesCount > 0) // Only show instructors with published courses
+      // All fetched users are admins, no need to filter
       .sort((a, b) => {
         // Sort by total enrollments first, then by courses count
         if (b.totalEnrollments !== a.totalEnrollments) {
