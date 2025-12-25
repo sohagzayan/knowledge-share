@@ -1,7 +1,26 @@
 import { prisma } from "../lib/db";
 
 async function main() {
-  console.log("Seeding subscription plans...");
+  console.log("Seeding subscription plans...\n");
+  
+  // Check if Stripe Price IDs are set
+  const personalPriceId = process.env.STRIPE_PRICE_PERSONAL_MONTHLY;
+  const teamPriceId = process.env.STRIPE_PRICE_TEAM_MONTHLY;
+  
+  if (personalPriceId) {
+    console.log("✅ Personal Plan Stripe Price ID found:", personalPriceId);
+  } else {
+    console.log("⚠️  Personal Plan Stripe Price ID not found in environment variables");
+    console.log("   Set STRIPE_PRICE_PERSONAL_MONTHLY in .env.local");
+  }
+  
+  if (teamPriceId) {
+    console.log("✅ Team Plan Stripe Price ID found:", teamPriceId);
+  } else {
+    console.log("⚠️  Team Plan Stripe Price ID not found in environment variables");
+    console.log("   Set STRIPE_PRICE_TEAM_MONTHLY in .env.local");
+  }
+  console.log();
 
   // First, delete all plans that are not personal, team, or enterprise
   const validSlugs = ["personal", "team", "enterprise"];
@@ -31,6 +50,8 @@ async function main() {
       planType: "Personal",
       priceMonthly: 799, // $7.99 in cents
       priceYearly: null, // No yearly plan
+      stripePriceIdMonthly: process.env.STRIPE_PRICE_PERSONAL_MONTHLY || null, // Add your Stripe Price ID here (e.g., "price_xxxxx")
+      stripePriceIdYearly: null,
       isActive: true,
       isPopular: false,
       trialDays: 7,
@@ -60,6 +81,8 @@ async function main() {
       planType: "Personal",
       priceMonthly: 799, // $7.99 in cents
       priceYearly: null, // No yearly plan
+      stripePriceIdMonthly: process.env.STRIPE_PRICE_PERSONAL_MONTHLY || null, // Add your Stripe Price ID here (e.g., "price_xxxxx")
+      stripePriceIdYearly: null,
       isActive: true,
       isPopular: false,
       trialDays: 7,
@@ -95,6 +118,8 @@ async function main() {
       planType: "Team",
       priceMonthly: 1999, // $19.99 in cents
       priceYearly: null, // No yearly plan
+      stripePriceIdMonthly: process.env.STRIPE_PRICE_TEAM_MONTHLY || null, // Add your Stripe Price ID here (e.g., "price_xxxxx")
+      stripePriceIdYearly: null,
       isActive: true,
       isPopular: true,
       trialDays: 14,
@@ -129,6 +154,8 @@ async function main() {
       planType: "Team",
       priceMonthly: 1999, // $19.99 in cents
       priceYearly: null, // No yearly plan
+      stripePriceIdMonthly: process.env.STRIPE_PRICE_TEAM_MONTHLY || null, // Add your Stripe Price ID here (e.g., "price_xxxxx")
+      stripePriceIdYearly: null,
       isActive: true,
       isPopular: true,
       trialDays: 14,
@@ -169,6 +196,8 @@ async function main() {
       planType: "Enterprise",
       priceMonthly: null, // Request for demo - no fixed price
       priceYearly: null,
+      stripePriceIdMonthly: null, // Enterprise uses custom pricing
+      stripePriceIdYearly: null,
       isActive: true,
       isPopular: false,
       trialDays: 30,
@@ -205,6 +234,8 @@ async function main() {
       planType: "Enterprise",
       priceMonthly: null, // Request for demo - no fixed price
       priceYearly: null,
+      stripePriceIdMonthly: null, // Enterprise uses custom pricing
+      stripePriceIdYearly: null,
       isActive: true,
       isPopular: false,
       trialDays: 30,
@@ -243,10 +274,23 @@ async function main() {
   console.log("  - Personal ($7.99/month)");
   console.log("  - Team ($19.99/month)");
   console.log("  - Enterprise (Request for demo)");
-  console.log("\nNote: You'll need to create Stripe products and prices, then update:");
-  console.log("  - stripePriceIdMonthly");
-  console.log("  - stripePriceIdYearly");
-  console.log("\nFor each plan in the database.");
+  console.log("\n📝 Stripe Price IDs Status:");
+  if (personalPriceId) {
+    console.log(`   ✅ Personal Plan: ${personalPriceId}`);
+  } else {
+    console.log("   ❌ Personal Plan: Not set (add to .env.local)");
+  }
+  
+  if (teamPriceId) {
+    console.log(`   ✅ Team Plan: ${teamPriceId}`);
+  } else {
+    console.log("   ❌ Team Plan: Not set (add to .env.local)");
+  }
+  
+  console.log("\n💡 To add Stripe Price IDs, add these to your .env.local file:");
+  console.log("   STRIPE_PRICE_PERSONAL_MONTHLY=price_1ShXre2MBz781G8pSJl0GON2");
+  console.log("   STRIPE_PRICE_TEAM_MONTHLY=price_1ShXrD2MBz781G8pct7HNgH5");
+  console.log("\n   Then run: npm run seed:plans");
 }
 
 main()
