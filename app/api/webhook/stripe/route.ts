@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { stripe } from "@/lib/stripe";
+import { mapPriceIdToPlanCode } from "@/lib/subscription-utils";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 
@@ -32,7 +33,236 @@ export async function POST(req: Request) {
 
   const session = event.data.object as Stripe.Checkout.Session;
 
+  // ============================================
+  // ORG-BASED SUBSCRIPTION WEBHOOK HANDLERS
+  // ============================================
+
+  // A) checkout.session.completed - Handle org subscription checkout
   if (event.type === "checkout.session.completed") {
+    // Check if this is an org-based subscription checkout
+    if (session.mode === "subscription" && session.metadata?.orgId) {
+      try {
+        const orgId = session.metadata.orgId;
+        const planCode = session.metadata.planCode as string;
+        const customerId =
+          typeof session.customer === "string"
+            ? session.customer
+            : session.customer?.id;
+
+        if (!orgId || !customerId) {
+          console.error("Missing required metadata for org subscription", {
+            sessionId: session.id,
+            metadata: session.metadata,
+          });
+          return new Response("Missing required metadata", { status: 400 });
+        }
+
+        // Get subscription from Stripe
+        const stripeSubscriptionId =
+          typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription?.id;
+
+        if (!stripeSubscriptionId) {
+          console.error("Subscription ID not found in session", {
+            sessionId: session.id,
+          });
+          return new Response("Subscription ID not found", { status: 400 });
+        }
+
+        const stripeSubscription = await stripe.subscriptions.retrieve(
+          stripeSubscriptionId
+        );
+
+        // Get price ID and map to plan code
+        const priceId =
+          stripeSubscription.items.data[0]?.price.id || session.metadata.priceId;
+        const mappedPlanCode = planCode || mapPriceIdToPlanCode(priceId || "");
+
+        if (!mappedPlanCode) {
+          console.error("Could not map price ID to plan code", {
+            priceId,
+            sessionId: session.id,
+          });
+          return new Response("Invalid plan code", { status: 400 });
+        }
+
+        // Create or update subscription
+        await prisma.$transaction(async (tx) => {
+          const currentPeriodStart = new Date(
+            stripeSubscription.current_period_start * 1000
+          );
+          const currentPeriodEnd = new Date(
+            stripeSubscription.current_period_end * 1000
+          );
+
+          await tx.subscription.upsert({
+            where: { orgId },
+            update: {
+              planCode: mappedPlanCode,
+              status: stripeSubscription.status === "trialing" ? "Trialing" : "Active",
+              currentPeriodStart,
+              currentPeriodEnd,
+              cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end || false,
+              stripeCustomerId: customerId,
+              stripeSubscriptionId: stripeSubscriptionId,
+              stripePriceId: priceId || null,
+              updatedAt: new Date(),
+            },
+            create: {
+              orgId,
+              planCode: mappedPlanCode,
+              status: stripeSubscription.status === "trialing" ? "Trialing" : "Active",
+              currentPeriodStart,
+              currentPeriodEnd,
+              cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end || false,
+              stripeCustomerId: customerId,
+              stripeSubscriptionId: stripeSubscriptionId,
+              stripePriceId: priceId || null,
+            },
+          });
+        });
+
+        console.log("Org subscription created/updated successfully", {
+          orgId,
+          planCode: mappedPlanCode,
+          stripeSubscriptionId,
+        });
+
+        return new Response(null, { status: 200 });
+      } catch (error) {
+        console.error("Error processing org subscription checkout:", error);
+        return new Response("Internal server error", { status: 500 });
+      }
+    }
+
+    // Check if this is a subscription checkout (legacy user-based)
+    if (session.mode === "subscription") {
+      try {
+        const planId = session.metadata?.planId;
+        const userId = session.metadata?.userId;
+        const billingCycle = session.metadata?.billingCycle as "monthly" | "yearly" | undefined;
+        const customerId =
+          typeof session.customer === "string"
+            ? session.customer
+            : session.customer?.id;
+
+        if (!planId || !userId || !customerId) {
+          console.error("Missing required metadata for subscription", {
+            sessionId: session.id,
+            metadata: session.metadata,
+          });
+          return new Response("Missing required metadata", { status: 400 });
+        }
+
+        // Get subscription from Stripe
+        const stripeSubscriptionId =
+          typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription?.id;
+
+        if (!stripeSubscriptionId) {
+          console.error("Subscription ID not found in session", {
+            sessionId: session.id,
+          });
+          return new Response("Subscription ID not found", { status: 400 });
+        }
+
+        const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+
+        // Get plan
+        const plan = await prisma.subscriptionPlan.findUnique({
+          where: { id: planId },
+        });
+
+        if (!plan) {
+          console.error("Plan not found", { planId });
+          return new Response("Plan not found", { status: 404 });
+        }
+
+        // Create or update user subscription
+        const startDate = new Date(stripeSubscription.current_period_start * 1000);
+        const endDate = new Date(stripeSubscription.current_period_end * 1000);
+        const nextBillingDate = stripeSubscription.current_period_end
+          ? new Date(stripeSubscription.current_period_end * 1000)
+          : null;
+
+        await prisma.$transaction(async (tx) => {
+          // Cancel any existing active subscriptions
+          await tx.userSubscription.updateMany({
+            where: {
+              userId: userId,
+              status: {
+                in: ["Active", "Trial"],
+              },
+            },
+            data: {
+              status: "Cancelled",
+              autoRenew: false,
+              cancelledAt: new Date(),
+            },
+          });
+
+          // Create new subscription
+          const subscription = await tx.userSubscription.create({
+            data: {
+              userId: userId,
+              planId: planId,
+              status: plan.trialDays > 0 ? "Trial" : "Active",
+              billingCycle: billingCycle === "yearly" ? "Yearly" : "Monthly",
+              startDate: startDate,
+              endDate: endDate,
+              nextBillingDate: nextBillingDate,
+              autoRenew: true,
+              stripeSubscriptionId: stripeSubscriptionId,
+              stripeCustomerId: customerId,
+            },
+          });
+
+          // Log to history
+          await tx.subscriptionHistory.create({
+            data: {
+              userId: userId,
+              subscriptionId: subscription.id,
+              action: "Created",
+              newPlanId: planId,
+            },
+          });
+
+          // Create invoice if payment was successful
+          if (session.payment_status === "paid" && session.amount_total) {
+            const invoiceNumber = `INV-${Date.now()}-${subscription.id.slice(0, 8)}`;
+            await tx.invoice.create({
+              data: {
+                invoiceNumber: invoiceNumber,
+                userId: userId,
+                subscriptionId: subscription.id,
+                planName: plan.name,
+                amount: session.amount_total,
+                totalAmount: session.amount_total,
+                paymentStatus: "Paid",
+                paymentDate: new Date(),
+                stripePaymentIntentId: session.payment_intent as string | null,
+                stripeInvoiceId: stripeSubscription.latest_invoice as string | null,
+              },
+            });
+          }
+        });
+
+        console.log("Subscription created successfully", {
+          userId,
+          planId,
+          stripeSubscriptionId,
+        });
+      } catch (error) {
+        console.error("Error processing subscription checkout:", error);
+        return new Response("Internal server error", { status: 500 });
+      }
+
+      return new Response(null, { status: 200 });
+    }
+
+    // Existing course enrollment handler
     try {
       // Validate required metadata
       const courseId = session.metadata?.courseId;
@@ -147,6 +377,346 @@ export async function POST(req: Request) {
     } catch (error) {
       console.error("Error processing checkout.session.completed:", error);
       // Return 500 so Stripe will retry
+      return new Response("Internal server error", { status: 500 });
+    }
+  }
+
+  // B) customer.subscription.created / customer.subscription.updated
+  // Source of truth for status, periods, cancel_at_period_end, and plan mapping
+  if (
+    event.type === "customer.subscription.created" ||
+    event.type === "customer.subscription.updated"
+  ) {
+    const stripeSubscription = event.data.object as Stripe.Subscription;
+
+    try {
+      // Check for org-based subscription first
+      const orgSubscription = await prisma.subscription.findUnique({
+        where: {
+          stripeSubscriptionId: stripeSubscription.id,
+        },
+      });
+
+      if (orgSubscription) {
+        // Map Stripe status to our status
+        const statusMap: Record<
+          string,
+          "Active" | "Trialing" | "PastDue" | "Cancelled" | "Expired" | "Incomplete" | "Paused"
+        > = {
+          active: "Active",
+          trialing: "Trialing",
+          past_due: "PastDue",
+          canceled: "Cancelled",
+          unpaid: "Expired",
+          incomplete: "Incomplete",
+          incomplete_expired: "Expired",
+          paused: "Paused",
+        };
+
+        const newStatus =
+          statusMap[stripeSubscription.status] || "Incomplete";
+
+        // Get price ID and map to plan code
+        const priceId = stripeSubscription.items.data[0]?.price.id;
+        const mappedPlanCode = priceId
+          ? mapPriceIdToPlanCode(priceId) || orgSubscription.planCode
+          : orgSubscription.planCode;
+
+        const currentPeriodStart = stripeSubscription.current_period_start
+          ? new Date(stripeSubscription.current_period_start * 1000)
+          : null;
+        const currentPeriodEnd = stripeSubscription.current_period_end
+          ? new Date(stripeSubscription.current_period_end * 1000)
+          : null;
+
+        await prisma.subscription.update({
+          where: { id: orgSubscription.id },
+          data: {
+            planCode: mappedPlanCode,
+            status: newStatus,
+            currentPeriodStart,
+            currentPeriodEnd,
+            cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end || false,
+            stripePriceId: priceId || orgSubscription.stripePriceId,
+            updatedAt: new Date(),
+          },
+        });
+
+        console.log("Org subscription updated", {
+          orgId: orgSubscription.orgId,
+          status: newStatus,
+          planCode: mappedPlanCode,
+        });
+      } else {
+        // Legacy user-based subscription handling
+        const subscription = await prisma.userSubscription.findUnique({
+          where: {
+            stripeSubscriptionId: stripeSubscription.id,
+          },
+        });
+
+        if (subscription) {
+          const statusMap: Record<string, "Active" | "Cancelled" | "PastDue" | "Expired"> = {
+            active: "Active",
+            canceled: "Cancelled",
+            past_due: "PastDue",
+            unpaid: "Expired",
+          };
+
+          const newStatus = statusMap[stripeSubscription.status] || "Active";
+          const endDate = stripeSubscription.current_period_end
+            ? new Date(stripeSubscription.current_period_end * 1000)
+            : null;
+          const nextBillingDate = stripeSubscription.current_period_end
+            ? new Date(stripeSubscription.current_period_end * 1000)
+            : null;
+
+          await prisma.userSubscription.update({
+            where: { id: subscription.id },
+            data: {
+              status: newStatus,
+              endDate: endDate,
+              nextBillingDate: nextBillingDate,
+              autoRenew: !stripeSubscription.cancel_at_period_end,
+              cancelledAt: stripeSubscription.cancel_at_period_end
+                ? new Date()
+                : subscription.cancelledAt,
+            },
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error processing subscription.updated:", error);
+      return new Response("Internal server error", { status: 500 });
+    }
+  }
+
+  // C) customer.subscription.deleted - Mark subscription canceled/expired
+  if (event.type === "customer.subscription.deleted") {
+    const stripeSubscription = event.data.object as Stripe.Subscription;
+
+    try {
+      // Check for org-based subscription first
+      const orgSubscription = await prisma.subscription.findUnique({
+        where: {
+          stripeSubscriptionId: stripeSubscription.id,
+        },
+      });
+
+      if (orgSubscription) {
+        await prisma.subscription.update({
+          where: { id: orgSubscription.id },
+          data: {
+            status: "Expired",
+            cancelAtPeriodEnd: false,
+            updatedAt: new Date(),
+          },
+        });
+
+        console.log("Org subscription deleted", {
+          orgId: orgSubscription.orgId,
+        });
+      } else {
+        // Legacy user-based subscription handling
+        const subscription = await prisma.userSubscription.findUnique({
+          where: {
+            stripeSubscriptionId: stripeSubscription.id,
+          },
+        });
+
+        if (subscription) {
+          await prisma.$transaction(async (tx) => {
+            await tx.userSubscription.update({
+              where: { id: subscription.id },
+              data: {
+                status: "Expired",
+                autoRenew: false,
+                cancelledAt: new Date(),
+              },
+            });
+
+            await tx.subscriptionHistory.create({
+              data: {
+                userId: subscription.userId,
+                subscriptionId: subscription.id,
+                action: "Expired",
+                oldPlanId: subscription.planId,
+              },
+            });
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error processing subscription.deleted:", error);
+      return new Response("Internal server error", { status: 500 });
+    }
+  }
+
+  // D) invoice.payment_succeeded - Set status active, confirm renewals
+  if (event.type === "invoice.payment_succeeded" || event.type === "invoice.paid") {
+    const invoice = event.data.object as Stripe.Invoice;
+
+    try {
+      if (invoice.subscription) {
+        const stripeSubscriptionId =
+          typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : invoice.subscription.id;
+
+        // Check for org-based subscription first
+        const orgSubscription = await prisma.subscription.findUnique({
+          where: {
+            stripeSubscriptionId: stripeSubscriptionId,
+          },
+        });
+
+        if (orgSubscription && invoice.period_end) {
+          const currentPeriodEnd = new Date(invoice.period_end * 1000);
+
+          await prisma.subscription.update({
+            where: { id: orgSubscription.id },
+            data: {
+              status: "Active",
+              currentPeriodEnd,
+              updatedAt: new Date(),
+            },
+          });
+
+          console.log("Org subscription payment succeeded", {
+            orgId: orgSubscription.orgId,
+          });
+        } else {
+          // Legacy user-based subscription handling
+          const subscription = await prisma.userSubscription.findUnique({
+            where: {
+              stripeSubscriptionId: stripeSubscriptionId,
+            },
+            include: {
+              plan: true,
+            },
+          });
+
+          if (subscription && invoice.amount_paid) {
+            // Update subscription dates
+            const endDate = invoice.period_end
+              ? new Date(invoice.period_end * 1000)
+              : null;
+            const nextBillingDate = invoice.period_end
+              ? new Date(invoice.period_end * 1000)
+              : null;
+
+            await prisma.$transaction(async (tx) => {
+              await tx.userSubscription.update({
+                where: { id: subscription.id },
+                data: {
+                  status: "Active",
+                  endDate: endDate,
+                  nextBillingDate: nextBillingDate,
+                },
+              });
+
+              // Create or update invoice
+              const invoiceNumber = `INV-${Date.now()}-${subscription.id.slice(0, 8)}`;
+              await tx.invoice.create({
+                data: {
+                  invoiceNumber: invoiceNumber,
+                  userId: subscription.userId,
+                  subscriptionId: subscription.id,
+                  planName: subscription.plan.name,
+                  amount: invoice.amount_paid,
+                  totalAmount: invoice.amount_paid,
+                  paymentStatus: "Paid",
+                  paymentDate: new Date(),
+                  stripePaymentIntentId: invoice.payment_intent as string | null,
+                  stripeInvoiceId: invoice.id,
+                },
+              });
+
+              await tx.subscriptionHistory.create({
+                data: {
+                  userId: subscription.userId,
+                  subscriptionId: subscription.id,
+                  action: "Renewed",
+                  oldPlanId: subscription.planId,
+                },
+              });
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error processing invoice.payment_succeeded:", error);
+      return new Response("Internal server error", { status: 500 });
+    }
+  }
+
+  // E) invoice.payment_failed - Set status past_due, grace period logic
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+
+    try {
+      if (invoice.subscription) {
+        const stripeSubscriptionId =
+          typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : invoice.subscription.id;
+
+        // Check for org-based subscription first
+        const orgSubscription = await prisma.subscription.findUnique({
+          where: {
+            stripeSubscriptionId: stripeSubscriptionId,
+          },
+        });
+
+        if (orgSubscription) {
+          await prisma.subscription.update({
+            where: { id: orgSubscription.id },
+            data: {
+              status: "PastDue",
+              updatedAt: new Date(),
+            },
+          });
+
+          console.log("Org subscription payment failed", {
+            orgId: orgSubscription.orgId,
+          });
+        } else {
+          // Legacy user-based subscription handling
+          const subscription = await prisma.userSubscription.findUnique({
+            where: {
+              stripeSubscriptionId: stripeSubscriptionId,
+            },
+          });
+
+          if (subscription) {
+            await prisma.userSubscription.update({
+              where: { id: subscription.id },
+              data: {
+                status: "PastDue",
+              },
+            });
+
+            // Create failed invoice record
+            if (invoice.amount_due) {
+              const invoiceNumber = `INV-${Date.now()}-${subscription.id.slice(0, 8)}`;
+              await prisma.invoice.create({
+                data: {
+                  invoiceNumber: invoiceNumber,
+                  userId: subscription.userId,
+                  subscriptionId: subscription.id,
+                  planName: "Subscription Renewal",
+                  amount: invoice.amount_due,
+                  totalAmount: invoice.amount_due,
+                  paymentStatus: "Failed",
+                  stripeInvoiceId: invoice.id,
+                },
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error processing invoice.payment_failed:", error);
       return new Response("Internal server error", { status: 500 });
     }
   }

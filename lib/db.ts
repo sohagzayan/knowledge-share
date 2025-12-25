@@ -55,8 +55,9 @@ try {
 // If not, clear the cache and create a new instance
 let prismaInstance: PrismaClient;
 if (process.env.NODE_ENV === "development" && globalForPrisma.prisma) {
-  // Check if the cached instance has the courseRatingReaction model
-  if (!('courseRatingReaction' in globalForPrisma.prisma)) {
+  // Check if the cached instance has the subscriptionPlan model (newest model)
+  // This ensures we regenerate if new models were added
+  if (!('subscriptionPlan' in globalForPrisma.prisma)) {
     // Clear the old cached instance and disconnect it
     if (globalForPrisma.prisma) {
       globalForPrisma.prisma.$disconnect().catch(() => {});

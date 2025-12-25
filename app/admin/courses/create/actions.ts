@@ -103,6 +103,7 @@ export async function CreateCourse(
         smallDescription: validation.data.smallDescription,
         slug: validation.data.slug,
         status: validation.data.status,
+        availableInSubscription: validation.data.availableInSubscription,
         userId: session.user.id,
         stripePriceId: typeof stripeProduct.default_price === "string" 
           ? stripeProduct.default_price 

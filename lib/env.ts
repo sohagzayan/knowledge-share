@@ -39,6 +39,13 @@ export const env = createEnv({
     AWS_REGION: z.string().optional(),
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    // Stripe Price IDs for subscription plans (webhook-only approach)
+    STRIPE_PRICE_PERSONAL_MONTHLY: z.string().optional(),
+    STRIPE_PRICE_PERSONAL_YEARLY: z.string().optional(),
+    STRIPE_PRICE_TEAM_MONTHLY: z.string().optional(),
+    STRIPE_PRICE_TEAM_YEARLY: z.string().optional(),
+    STRIPE_PRICE_ENTERPRISE_MONTHLY: z.string().optional(),
+    STRIPE_PRICE_ENTERPRISE_YEARLY: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
   },
 
