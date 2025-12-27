@@ -1,6 +1,8 @@
 "use server";
 
 import { requireUser } from "@/app/data/user/require-user";
+import { getUserRole } from "@/lib/role-access";
+import { isAdminPlan } from "@/lib/plan-utils";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -26,6 +28,15 @@ export async function createSubscriptionCheckout(
   params: CreateSubscriptionCheckoutParams
 ): Promise<ApiResponse & { checkoutUrl?: string }> {
   const user = await requireUser();
+  const userRole = await getUserRole();
+  
+  // SuperAdmin: cannot subscribe
+  if (userRole === "superadmin") {
+    return {
+      status: "error",
+      message: "Super Admin accounts do not require subscriptions.",
+    };
+  }
 
   try {
     const req = await request();
@@ -52,6 +63,25 @@ export async function createSubscriptionCheckout(
       return {
         status: "error",
         message: "Subscription plan not found",
+      };
+    }
+
+    // Check if user can subscribe to this plan type
+    const planIsTeacherPlan = isAdminPlan(plan);
+    
+    // Admin: only allow teacher plans
+    if (userRole === "admin" && !planIsTeacherPlan) {
+      return {
+        status: "error",
+        message: "Teacher accounts cannot subscribe to student plans.",
+      };
+    }
+
+    // User: only allow student plans
+    if (userRole === "user" && planIsTeacherPlan) {
+      return {
+        status: "error",
+        message: "Student accounts cannot subscribe to teacher plans.",
       };
     }
 

@@ -20,11 +20,12 @@ export default async function DashboardPage() {
 
   const userRole = dbUser?.role || "user";
 
-  const [courses, enrolledCourses, subscription] = await Promise.all([
+  const [courses, enrolledCourses, subscriptionData] = await Promise.all([
     getAllCourses(),
     getEnrolledCourses(),
     getUserSubscription(),
   ]);
+  const subscription = subscriptionData.subscription;
 
   // Calculate stats
   const enrolledCount = enrolledCourses.length;

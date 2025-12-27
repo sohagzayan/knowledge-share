@@ -12,8 +12,13 @@ export const metadata: Metadata = {
 
 export default async function SubscriptionPage() {
   await requireUser();
-  const subscription = await getUserSubscription();
+  const { subscription, subscriptionHistory } = await getUserSubscription();
 
-  return <SubscriptionDashboard subscription={subscription} />;
+  return (
+    <SubscriptionDashboard 
+      subscription={subscription} 
+      subscriptionHistory={subscriptionHistory}
+    />
+  );
 }
 

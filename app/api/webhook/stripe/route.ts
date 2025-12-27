@@ -202,8 +202,33 @@ export async function POST(req: Request) {
           return new Response("Invalid subscription dates", { status: 400 });
         }
 
+        const isUpgrade = session.metadata?.isUpgrade === "true";
+        const oldSubscriptionId = session.metadata?.oldSubscriptionId;
+
         await prisma.$transaction(async (tx) => {
-          // Cancel any existing active subscriptions
+          // Get old subscription if this is an upgrade
+          let oldSubscription = null;
+          if (isUpgrade && oldSubscriptionId) {
+            oldSubscription = await tx.userSubscription.findUnique({
+              where: { id: oldSubscriptionId },
+              include: { plan: true },
+            });
+
+            // Cancel old subscription in Stripe if it exists
+            if (oldSubscription?.stripeSubscriptionId) {
+              try {
+                await stripe.subscriptions.cancel(oldSubscription.stripeSubscriptionId);
+                console.log("Cancelled old Stripe subscription", {
+                  oldSubscriptionId: oldSubscription.stripeSubscriptionId,
+                });
+              } catch (error) {
+                console.error("Error cancelling old Stripe subscription:", error);
+                // Continue even if cancellation fails
+              }
+            }
+          }
+
+          // Cancel any existing active subscriptions in database
           await tx.userSubscription.updateMany({
             where: {
               userId: userId,
@@ -234,12 +259,13 @@ export async function POST(req: Request) {
             },
           });
 
-          // Log to history
+          // Log to history - use "Upgraded" for upgrades, "Created" for new subscriptions
           await tx.subscriptionHistory.create({
             data: {
               userId: userId,
               subscriptionId: subscription.id,
-              action: "Created",
+              action: isUpgrade ? "Upgraded" : "Created",
+              oldPlanId: oldSubscription?.planId || null,
               newPlanId: planId,
             },
           });

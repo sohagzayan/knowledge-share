@@ -47,6 +47,8 @@ import { CreateCourse } from "./actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useConfetti } from "@/hooks/use-confetti";
+import { CourseLimitCheckServer } from "@/components/teacher/CourseLimitCheck";
+import { Suspense } from "react";
 
 export default function CourseCreationPage() {
   const [pending, startTransition] = useTransition();
@@ -105,6 +107,11 @@ export default function CourseCreationPage() {
         </Link>
         <h1 className="text-2xl font-bold">Create Courses</h1>
       </div>
+
+      {/* Course Limit Warning */}
+      <Suspense fallback={null}>
+        <CourseLimitCheckServer />
+      </Suspense>
 
       <Card>
         <CardHeader>

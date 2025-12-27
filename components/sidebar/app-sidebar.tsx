@@ -34,6 +34,7 @@ import {
   IconAlertTriangle,
   IconDatabase,
   IconInbox,
+  IconCreditCard,
 } from "@tabler/icons-react";
 import Logo from "@/public/logo.png";
 
@@ -104,6 +105,12 @@ const allNavMainItems = [
     title: "Order History",
     url: "/admin/order-history",
     icon: IconReceipt,
+    adminOnly: true, // Only visible to admin, not superadmin
+  },
+  {
+    title: "Subscription",
+    url: "/admin/subscription",
+    icon: IconCreditCard,
     adminOnly: true, // Only visible to admin, not superadmin
   },
   {

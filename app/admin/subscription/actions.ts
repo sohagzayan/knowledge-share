@@ -1,12 +1,12 @@
 "use server";
 
-import { requireUser } from "@/app/data/user/require-user";
-import { canSubscribeToUserPlans } from "@/lib/role-access";
+import { requireAdmin } from "@/app/data/admin/require-admin";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 import { prisma } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { ApiResponse } from "@/lib/types";
 import { request } from "@arcjet/next";
+import { isAdminPlan } from "@/lib/plan-utils";
 
 const aj = arcjet.withRule(
   fixedWindow({
@@ -16,22 +16,15 @@ const aj = arcjet.withRule(
   })
 );
 
-export async function cancelSubscription(): Promise<ApiResponse> {
-  const user = await requireUser();
-  
-  // Check if user can subscribe (only regular users can)
-  const canSubscribe = await canSubscribeToUserPlans();
-  if (!canSubscribe) {
-    return {
-      status: "error",
-      message: "Admin accounts cannot manage user subscriptions. Please contact support for admin subscription management.",
-    };
-  }
+export async function cancelAdminSubscription(
+  reason?: string
+): Promise<ApiResponse> {
+  const session = await requireAdmin();
 
   try {
     const req = await request();
     const decision = await aj.protect(req, {
-      fingerprint: user.id,
+      fingerprint: session.user.id,
     });
 
     if (decision.isDenied()) {
@@ -44,10 +37,13 @@ export async function cancelSubscription(): Promise<ApiResponse> {
     // Get user's active subscription
     const subscription = await prisma.userSubscription.findFirst({
       where: {
-        userId: user.id,
+        userId: session.user.id,
         status: {
           in: ["Active", "Trial"],
         },
+      },
+      include: {
+        plan: true,
       },
     });
 
@@ -55,6 +51,14 @@ export async function cancelSubscription(): Promise<ApiResponse> {
       return {
         status: "error",
         message: "No active subscription found",
+      };
+    }
+
+    // Verify it's a teacher plan
+    if (!isAdminPlan(subscription.plan)) {
+      return {
+        status: "error",
+        message: "This subscription is not a teacher plan",
       };
     }
 
@@ -82,13 +86,14 @@ export async function cancelSubscription(): Promise<ApiResponse> {
       },
     });
 
-    // Create history record
+    // Create history record with cancellation reason
     await prisma.subscriptionHistory.create({
       data: {
-        userId: user.id,
+        userId: session.user.id,
         subscriptionId: subscription.id,
         action: "Cancelled",
         oldPlanId: subscription.planId,
+        metadata: reason ? { cancellationReason: reason } : null,
       },
     });
 
@@ -107,24 +112,15 @@ export async function cancelSubscription(): Promise<ApiResponse> {
   }
 }
 
-export async function upgradeSubscription(
+export async function upgradeAdminSubscription(
   newPlanId: string
 ): Promise<ApiResponse & { checkoutUrl?: string }> {
-  const user = await requireUser();
-  
-  // Check if user can subscribe (only regular users can)
-  const canSubscribe = await canSubscribeToUserPlans();
-  if (!canSubscribe) {
-    return {
-      status: "error",
-      message: "Admin accounts cannot subscribe to user plans. Admin accounts require a different subscription plan.",
-    };
-  }
+  const session = await requireAdmin();
 
   try {
     const req = await request();
     const decision = await aj.protect(req, {
-      fingerprint: user.id,
+      fingerprint: session.user.id,
     });
 
     if (decision.isDenied()) {
@@ -149,10 +145,18 @@ export async function upgradeSubscription(
       };
     }
 
+    // Verify it's a teacher plan
+    if (!isAdminPlan(newPlan)) {
+      return {
+        status: "error",
+        message: "Admin accounts can only subscribe to teacher plans",
+      };
+    }
+
     // Get user's current subscription
     const currentSubscription = await prisma.userSubscription.findFirst({
       where: {
-        userId: user.id,
+        userId: session.user.id,
         status: {
           in: ["Active", "Trial"],
         },
@@ -180,7 +184,7 @@ export async function upgradeSubscription(
     let stripeCustomerId: string;
     const userWithStripeCustomerId = await prisma.user.findUnique({
       where: {
-        id: user.id,
+        id: session.user.id,
       },
       select: {
         stripeCustomerId: true,
@@ -191,14 +195,14 @@ export async function upgradeSubscription(
       stripeCustomerId = userWithStripeCustomerId.stripeCustomerId;
     } else {
       const stripeCustomerName =
-        [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
-        user.email.split("@")[0];
+        [session.user.firstName, session.user.lastName].filter(Boolean).join(" ").trim() ||
+        session.user.email.split("@")[0];
 
       const customer = await stripe.customers.create({
-        email: user.email,
+        email: session.user.email,
         name: stripeCustomerName,
         metadata: {
-          userId: user.id,
+          userId: session.user.id,
         },
       });
 
@@ -206,7 +210,7 @@ export async function upgradeSubscription(
 
       await prisma.user.update({
         where: {
-          id: user.id,
+          id: session.user.id,
         },
         data: {
           stripeCustomerId: stripeCustomerId,
@@ -214,8 +218,75 @@ export async function upgradeSubscription(
       });
     }
 
-    // Always create a checkout session for upgrades to ensure payment is processed
-    // This ensures proper payment flow, invoice generation, and webhook handling
+    // If user has a Stripe subscription, update it
+    if (currentSubscription.stripeSubscriptionId) {
+      try {
+        const stripeSubscription = await stripe.subscriptions.retrieve(
+          currentSubscription.stripeSubscriptionId
+        );
+
+        const newPriceId =
+          currentSubscription.billingCycle === "Yearly"
+            ? newPlan.stripePriceIdYearly
+            : newPlan.stripePriceIdMonthly;
+
+        if (!newPriceId) {
+          return {
+            status: "error",
+            message: "Stripe price not configured for this plan",
+          };
+        }
+
+        // Update subscription in Stripe
+        await stripe.subscriptions.update(currentSubscription.stripeSubscriptionId, {
+          items: [
+            {
+              id: stripeSubscription.items.data[0].id,
+              price: newPriceId,
+            },
+          ],
+          proration_behavior: "always_invoice",
+          metadata: {
+            userId: session.user.id,
+            planId: newPlan.id,
+            billingCycle: currentSubscription.billingCycle,
+          },
+        });
+
+        // Update in database
+        await prisma.userSubscription.update({
+          where: {
+            id: currentSubscription.id,
+          },
+          data: {
+            planId: newPlan.id,
+            autoRenew: true,
+            cancelledAt: null,
+          },
+        });
+
+        // Create history record
+        await prisma.subscriptionHistory.create({
+          data: {
+            userId: session.user.id,
+            subscriptionId: currentSubscription.id,
+            action: "Upgraded",
+            oldPlanId: currentSubscription.planId,
+            newPlanId: newPlan.id,
+          },
+        });
+
+        return {
+          status: "success",
+          message: "Subscription upgraded successfully",
+        };
+      } catch (error) {
+        console.error("Error upgrading Stripe subscription:", error);
+        // Fall through to create new checkout session
+      }
+    }
+
+    // If no Stripe subscription or update failed, create checkout session
     const stripePriceId =
       currentSubscription.billingCycle === "Yearly"
         ? newPlan.stripePriceIdYearly
@@ -228,11 +299,6 @@ export async function upgradeSubscription(
       };
     }
 
-    // For upgrades, we need to handle the existing subscription
-    // Option 1: Cancel old subscription and create new one (cleaner)
-    // Option 2: Use Stripe's subscription update (but requires immediate payment)
-    // We'll use Option 1 to ensure proper checkout flow
-    
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       line_items: [
@@ -242,27 +308,22 @@ export async function upgradeSubscription(
         },
       ],
       mode: "subscription",
-      success_url: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/payment/success?type=subscription&upgrade=true`,
-      cancel_url: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/pricing`,
+      success_url: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/payment/success?type=subscription`,
+      cancel_url: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/admin/subscription`,
       metadata: {
-        userId: user.id,
+        userId: session.user.id,
         planId: newPlan.id,
         billingCycle: currentSubscription.billingCycle,
         isUpgrade: "true",
         oldSubscriptionId: currentSubscription.id,
-        oldPlanId: currentSubscription.planId,
       },
       subscription_data: {
         metadata: {
-          userId: user.id,
+          userId: session.user.id,
           planId: newPlan.id,
           billingCycle: currentSubscription.billingCycle,
-          isUpgrade: "true",
-          oldSubscriptionId: currentSubscription.id,
         },
       },
-      // If user has existing subscription, we'll cancel it after successful checkout
-      // This is handled in the webhook
     });
 
     return {

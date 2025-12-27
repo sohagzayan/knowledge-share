@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Check, X, BookOpen, Users, Award, BarChart3, Download, MessageSquare, Zap, Clock, Globe, Shield, Headphones, Code, Video, FileText, Gamepad2, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
+import { Check, X, BookOpen, Users, Award, BarChart3, Download, MessageSquare, Zap, Clock, Globe, Headphones, Code, Video, FileText, Gamepad2, Loader2, Sparkles, CheckCircle2, GraduationCap, UserCog, Shield, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Accordion,
@@ -21,16 +21,31 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { SubscriptionPlanType } from "@/app/data/subscription/get-subscription-plans";
 import { UserSubscriptionType } from "@/app/data/subscription/get-user-subscription";
 import { cancelSubscription, upgradeSubscription } from "../actions";
+import { filterPlansByRole, isAdminPlan } from "@/lib/plan-utils";
+import type { UserRole } from "@/lib/role-access";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 interface PricingPlansProps {
   plans: SubscriptionPlanType[];
   currentSubscription: UserSubscriptionType | null;
+  userRole: UserRole | null;
+  isLoggedIn: boolean;
 }
 
 // Helper function to format price
@@ -201,32 +216,111 @@ const faqItems = [
   },
 ];
 
-export function PricingPlans({ plans, currentSubscription }: PricingPlansProps) {
+export function PricingPlans({ plans, currentSubscription, userRole, isLoggedIn }: PricingPlansProps) {
   const router = useRouter();
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"student" | "teacher" | "all">(() => {
+    // Set initial tab based on user role
+    if (!isLoggedIn) return "student"; // Default for guests
+    if (userRole === "admin") return "teacher";
+    if (userRole === "user") return "student";
+    if (userRole === "superadmin") return "all";
+    return "student";
+  });
 
-  // Sort plans in specific order: Personal > Team > Enterprise
+  // Determine if tabs should be shown and locked
+  const showTabs = !isLoggedIn || userRole === "superadmin";
+  const tabsLocked = isLoggedIn && userRole !== "superadmin";
+
+  // Filter plans based on selected role and user role
+  const getFilteredPlans = () => {
+    if (!isLoggedIn) {
+      // Guest: show plans based on selected tab
+      return filterPlansByRole(plans, selectedRole);
+    }
+    
+    if (userRole === "user") {
+      // User: only show student plans
+      return filterPlansByRole(plans, "student");
+    }
+    
+    if (userRole === "admin") {
+      // Admin: only show teacher plans
+      return filterPlansByRole(plans, "teacher");
+    }
+    
+    if (userRole === "superadmin") {
+      // SuperAdmin: show plans based on selected tab
+      return filterPlansByRole(plans, selectedRole);
+    }
+    
+    return plans;
+  };
+
+  // Sort plans in specific order
+  // Student plans: Personal > Team > Enterprise
+  // Teacher plans: Starter Teacher > Pro Teacher > Elite Teacher
   const planOrder: Record<string, number> = {
+    // Student plans
     personal: 1,
     team: 2,
     enterprise: 3,
+    // Teacher plans
+    "starter-teacher": 1,
+    "pro-teacher": 2,
+    "elite-teacher": 3,
   };
 
-  const sortedPlans = [...plans].sort((a, b) => {
-    const orderA = planOrder[a.slug.toLowerCase()] ?? 999;
-    const orderB = planOrder[b.slug.toLowerCase()] ?? 999;
-    return orderA - orderB;
+  const filteredPlans = getFilteredPlans();
+  const sortedPlans = [...filteredPlans].sort((a, b) => {
+    // Check if plans are teacher plans
+    const aIsTeacher = isAdminPlan(a);
+    const bIsTeacher = isAdminPlan(b);
+    
+    // If both are teacher plans or both are student plans, use the order
+    if (aIsTeacher === bIsTeacher) {
+      const orderA = planOrder[a.slug.toLowerCase()] ?? 999;
+      const orderB = planOrder[b.slug.toLowerCase()] ?? 999;
+      return orderA - orderB;
+    }
+    
+    // If different types, keep original order (shouldn't happen after filtering)
+    return 0;
   });
 
   const handleGetStarted = async (plan: SubscriptionPlanType) => {
+    // SuperAdmin: disable subscription
+    if (userRole === "superadmin") {
+      toast.info("Super Admin accounts do not require subscriptions.");
+      return;
+    }
+
+    // Guest: redirect to login
+    if (!isLoggedIn) {
+      router.push(`/login?redirect=/checkout?plan=${plan.slug}&billing=monthly`);
+      return;
+    }
+
+    // Check if user is trying to subscribe to wrong plan type
+    const planIsAdminPlan = isAdminPlan(plan);
+    if (userRole === "user" && planIsAdminPlan) {
+      toast.error("Student accounts cannot subscribe to teacher plans.");
+      return;
+    }
+    if (userRole === "admin" && !planIsAdminPlan) {
+      toast.error("Teacher accounts cannot subscribe to student plans.");
+      return;
+    }
+
     setLoadingPlanId(plan.id);
     
     // If user has an active subscription, treat it as an upgrade
     if (currentSubscription && (currentSubscription.status === "Active" || currentSubscription.status === "Trial")) {
       if (currentSubscription.planId === plan.id) {
-        // Same plan - redirect to subscription management
-        router.push("/dashboard/subscription");
+        // Same plan - redirect to subscription management (role-aware)
+        const subscriptionPath = userRole === "admin" ? "/admin/subscription" : "/dashboard/subscription";
+        router.push(subscriptionPath);
         setLoadingPlanId(null);
         return;
       } else {
@@ -280,23 +374,8 @@ export function PricingPlans({ plans, currentSubscription }: PricingPlansProps) 
     }
   };
 
-  // Show empty state if no plans
-  if (sortedPlans.length === 0) {
-    return (
-      <div className="min-h-screen bg-background">
-        <section className="pt-24 pb-16">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">
-              Pricing Plans
-            </h1>
-            <p className="text-muted-foreground mb-8">
-              No pricing plans available at the moment. Please check back later.
-            </p>
-          </div>
-        </section>
-      </div>
-    );
-  }
+  // Check if there are any plans at all (for complete empty state)
+  const hasAnyPlans = plans.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -310,10 +389,46 @@ export function PricingPlans({ plans, currentSubscription }: PricingPlansProps) 
             Simple, transparent pricing
           </h1>
           <p className="text-muted-foreground text-base max-w-md mx-auto">
-            Start free with limited courses. Scale as you grow and unlock unlimited learning.
+            {!isLoggedIn 
+              ? "Whether you're learning or teaching, we've got a plan for you."
+              : userRole === "user"
+              ? "Start free with limited courses. Scale as you grow and unlock unlimited learning."
+              : userRole === "admin"
+              ? "Teacher plans are designed for course creators."
+              : "Choose the plan that fits your needs."}
           </p>
         </div>
       </section>
+
+      {/* Role Switcher Tabs */}
+      {showTabs && (
+        <section className="pb-8">
+          <div className="max-w-4xl mx-auto px-4">
+            <Tabs 
+              value={selectedRole === "all" ? "all" : selectedRole} 
+              onValueChange={(value) => setSelectedRole(value as "student" | "teacher" | "all")}
+              className="w-full"
+            >
+              <TabsList className="grid w-full max-w-md mx-auto grid-cols-3">
+                <TabsTrigger value="student" disabled={tabsLocked && userRole !== "superadmin"}>
+                  <GraduationCap className="w-4 h-4 mr-2" />
+                  Student
+                </TabsTrigger>
+                <TabsTrigger value="teacher" disabled={tabsLocked && userRole !== "superadmin"}>
+                  <UserCog className="w-4 h-4 mr-2" />
+                  Teacher
+                </TabsTrigger>
+                {userRole === "superadmin" && (
+                  <TabsTrigger value="all">
+                    <Shield className="w-4 h-4 mr-2" />
+                    All
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </Tabs>
+          </div>
+        </section>
+      )}
 
       {/* Current Subscription Banner */}
       {currentSubscription && (currentSubscription.status === "Active" || currentSubscription.status === "Trial") && (
@@ -347,7 +462,7 @@ export function PricingPlans({ plans, currentSubscription }: PricingPlansProps) 
                 </p>
               </div>
             </div>
-            <Link href="/dashboard/subscription">
+            <Link href={userRole === "admin" ? "/admin/subscription" : "/dashboard/subscription"}>
               <Button variant="outline" size="sm" className="border-emerald-300 dark:border-emerald-700">
                 Manage Subscription
               </Button>
@@ -359,8 +474,22 @@ export function PricingPlans({ plans, currentSubscription }: PricingPlansProps) 
       {/* Pricing Plans */}
       <section className="pb-12">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="grid md:grid-cols-3 gap-3 max-w-4xl mx-auto items-start">
-            {sortedPlans.map((plan, index) => {
+          {sortedPlans.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground text-lg mb-2">
+                {selectedRole === "teacher" 
+                  ? "No teacher plans available at the moment."
+                  : selectedRole === "student"
+                  ? "No student plans available at the moment."
+                  : "No pricing plans available at the moment."}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Please check back later or contact support for more information.
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-3 max-w-4xl mx-auto items-start">
+              {sortedPlans.map((plan, index) => {
               const price = plan.priceMonthly;
               const features = buildFeaturesList(plan);
               const hasPrice = price !== null && price !== undefined;
@@ -508,71 +637,126 @@ export function PricingPlans({ plans, currentSubscription }: PricingPlansProps) 
                         })()}
                       </>
                     ) : hasPrice ? (
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Button
-                          variant={plan.isPopular ? "default" : "outline"}
-                          className="w-full h-10 rounded-full relative overflow-hidden group"
-                          onClick={() => handleGetStarted(plan)}
-                          disabled={isLoading || (hasAnyActiveSubscription && !isCurrentPlanActive)}
-                        >
-                          <AnimatePresence mode="wait">
-                            {isLoading ? (
-                              <motion.div
-                                key="loading"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="flex items-center justify-center"
-                              >
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Processing...
-                              </motion.div>
-                            ) : (
-                              <motion.div
-                                key="text"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="flex items-center justify-center"
-                              >
-                                {hasAnyActiveSubscription && !isCurrentPlanActive ? (
-                                  <>
-                                    <Sparkles className="mr-2 h-4 w-4" />
-                                    Upgrade to {plan.name}
-                                  </>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <motion.div
+                            whileHover={userRole !== "superadmin" ? { scale: 1.02 } : {}}
+                            whileTap={userRole !== "superadmin" ? { scale: 0.98 } : {}}
+                          >
+                            <Button
+                              variant={plan.isPopular ? "default" : "outline"}
+                              className={`w-full h-10 rounded-full relative overflow-hidden group ${
+                                userRole === "superadmin" ? "opacity-60 cursor-not-allowed" : ""
+                              }`}
+                              onClick={() => handleGetStarted(plan)}
+                              disabled={
+                                isLoading || 
+                                (hasAnyActiveSubscription && !isCurrentPlanActive) ||
+                                userRole === "superadmin"
+                              }
+                            >
+                              <AnimatePresence mode="wait">
+                                {isLoading ? (
+                                  <motion.div
+                                    key="loading"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="flex items-center justify-center"
+                                  >
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Processing...
+                                  </motion.div>
                                 ) : (
-                                  <>
-                                    Get Started
-                                    <Sparkles className="ml-2 h-4 w-4 group-hover:animate-pulse" />
-                                  </>
+                                  <motion.div
+                                    key="text"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="flex items-center justify-center"
+                                  >
+                                    {userRole === "superadmin" ? (
+                                      <>
+                                        <Lock className="mr-2 h-4 w-4" />
+                                        Not Required
+                                      </>
+                                    ) : !isLoggedIn ? (
+                                      <>
+                                        Login to Subscribe
+                                        <Sparkles className="ml-2 h-4 w-4 group-hover:animate-pulse" />
+                                      </>
+                                    ) : hasAnyActiveSubscription && !isCurrentPlanActive ? (
+                                      <>
+                                        <Sparkles className="mr-2 h-4 w-4" />
+                                        Upgrade to {plan.name}
+                                      </>
+                                    ) : isAdminPlan(plan) && userRole === "admin" ? (
+                                      <>
+                                        Subscribe as Teacher
+                                        <Sparkles className="ml-2 h-4 w-4 group-hover:animate-pulse" />
+                                      </>
+                                    ) : (
+                                      <>
+                                        Get Started
+                                        <Sparkles className="ml-2 h-4 w-4 group-hover:animate-pulse" />
+                                      </>
+                                    )}
+                                  </motion.div>
                                 )}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </Button>
-                      </motion.div>
+                              </AnimatePresence>
+                            </Button>
+                          </motion.div>
+                        </TooltipTrigger>
+                        {userRole === "superadmin" && (
+                          <TooltipContent>
+                            <p>Super Admin accounts don&apos;t need subscriptions.</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
                     ) : (
-                      <Link href="/contact" className="block">
-                        <Button
-                          variant={plan.isPopular ? "default" : "outline"}
-                          className="w-full h-10 rounded-full"
-                        >
-                          Request for demo
-                        </Button>
-                      </Link>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            {userRole === "superadmin" ? (
+                              <Button
+                                variant={plan.isPopular ? "default" : "outline"}
+                                className="w-full h-10 rounded-full opacity-60 cursor-not-allowed"
+                                disabled
+                              >
+                                <Lock className="mr-2 h-4 w-4" />
+                                Not Required
+                              </Button>
+                            ) : (
+                              <Link href="/contact" className="block">
+                                <Button
+                                  variant={plan.isPopular ? "default" : "outline"}
+                                  className="w-full h-10 rounded-full"
+                                >
+                                  Request for demo
+                                </Button>
+                              </Link>
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        {userRole === "superadmin" && (
+                          <TooltipContent>
+                            <p>Super Admin accounts don&apos;t need subscriptions.</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
                     )}
                   </div>
                 </motion.div>
               );
             })}
-          </div>
+            </div>
+          )}
 
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            No credit card required • Cancel anytime
-          </p>
+          {sortedPlans.length > 0 && (
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              No credit card required • Cancel anytime
+            </p>
+          )}
         </div>
       </section>
 

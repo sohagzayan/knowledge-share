@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CancelSubscriptionPage() {
   await requireUser();
-  const subscription = await getUserSubscription();
+  const { subscription } = await getUserSubscription();
 
   if (!subscription || subscription.status !== "Active") {
     redirect("/dashboard/subscription");

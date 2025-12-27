@@ -1,14 +1,15 @@
 "use client";
 
-import { UserSubscriptionType } from "@/app/data/subscription/get-user-subscription";
+import { UserSubscriptionType, UserSubscriptionHistoryType } from "@/app/data/subscription/get-user-subscription";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Calendar, CreditCard, Download, RefreshCw, X, Check } from "lucide-react";
+import { Calendar, CreditCard, Download, RefreshCw, X, Check, History, AlertCircle } from "lucide-react";
 
 interface SubscriptionDashboardProps {
   subscription: UserSubscriptionType;
+  subscriptionHistory: UserSubscriptionHistoryType;
 }
 
 function getStatusBadgeVariant(status: string) {
@@ -28,7 +29,16 @@ function getStatusBadgeVariant(status: string) {
   }
 }
 
-export function SubscriptionDashboard({ subscription }: SubscriptionDashboardProps) {
+const formatDate = (date: Date | null) => {
+  if (!date) return "N/A";
+  return new Date(date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+export function SubscriptionDashboard({ subscription, subscriptionHistory }: SubscriptionDashboardProps) {
   if (!subscription) {
     return (
       <div className="space-y-6">
@@ -48,6 +58,69 @@ export function SubscriptionDashboard({ subscription }: SubscriptionDashboardPro
             </div>
           </CardContent>
         </Card>
+        {/* Show history even if no active subscription */}
+        {subscriptionHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Subscription History</CardTitle>
+                  <CardDescription>Your subscription activity and changes</CardDescription>
+                </div>
+                <History className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {subscriptionHistory.map((historyItem) => {
+                  const planName = historyItem.newPlan?.name || historyItem.oldPlan?.name || historyItem.subscription?.plan.name || "Unknown Plan";
+                  const actionColor = historyItem.action === "Cancelled" ? "text-red-500" : 
+                                    historyItem.action === "Created" ? "text-green-500" :
+                                    historyItem.action === "Upgraded" ? "text-blue-500" : "text-muted-foreground";
+                  
+                  return (
+                    <div
+                      key={historyItem.id}
+                      className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="p-2 bg-muted rounded shrink-0">
+                        <History className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className={`font-medium ${actionColor}`}>
+                            {historyItem.action}
+                          </p>
+                          {historyItem.action === "Cancelled" && (
+                            <Badge variant="outline" className="border-red-500 text-red-500 text-xs">
+                              Cancelled
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {planName}
+                        </p>
+                        {historyItem.oldPlan && historyItem.newPlan && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {historyItem.oldPlan.name} → {historyItem.newPlan.name}
+                          </p>
+                        )}
+                        {historyItem.metadata?.cancellationReason && (
+                          <p className="text-sm text-muted-foreground mt-1 italic">
+                            Reason: {historyItem.metadata.cancellationReason}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDate(historyItem.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
@@ -55,6 +128,12 @@ export function SubscriptionDashboard({ subscription }: SubscriptionDashboardPro
   const { plan, status, billingCycle, nextBillingDate, endDate, startDate } = subscription;
   const isCancelled = status === "Cancelled";
   const daysRemaining = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+
+  // Get cancellation reason from history
+  const cancellationHistory = subscriptionHistory.find(
+    (h) => h.action === "Cancelled" && h.subscription?.id === subscription.id
+  );
+  const cancellationReason = cancellationHistory?.metadata?.cancellationReason;
 
   return (
     <div className="space-y-6">
@@ -124,6 +203,19 @@ export function SubscriptionDashboard({ subscription }: SubscriptionDashboardPro
             )}
           </div>
 
+          {/* Cancellation Reason (if cancelled) */}
+          {isCancelled && cancellationReason && (
+            <div className="border-t pt-4">
+              <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Cancellation Reason</p>
+                  <p className="text-sm">{cancellationReason}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="border-t pt-4 flex flex-wrap gap-3">
             {!isCancelled && (
@@ -159,6 +251,70 @@ export function SubscriptionDashboard({ subscription }: SubscriptionDashboardPro
           </div>
         </CardContent>
       </Card>
+
+      {/* Subscription History Card */}
+      {subscriptionHistory.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Subscription History</CardTitle>
+                <CardDescription>Your subscription activity and changes</CardDescription>
+              </div>
+              <History className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {subscriptionHistory.map((historyItem) => {
+                const planName = historyItem.newPlan?.name || historyItem.oldPlan?.name || historyItem.subscription?.plan.name || "Unknown Plan";
+                const actionColor = historyItem.action === "Cancelled" ? "text-red-500" : 
+                                  historyItem.action === "Created" ? "text-green-500" :
+                                  historyItem.action === "Upgraded" ? "text-blue-500" : "text-muted-foreground";
+                
+                return (
+                  <div
+                    key={historyItem.id}
+                    className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="p-2 bg-muted rounded shrink-0">
+                      <History className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className={`font-medium ${actionColor}`}>
+                          {historyItem.action}
+                        </p>
+                        {historyItem.action === "Cancelled" && (
+                          <Badge variant="outline" className="border-red-500 text-red-500 text-xs">
+                            Cancelled
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {planName}
+                      </p>
+                      {historyItem.oldPlan && historyItem.newPlan && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {historyItem.oldPlan.name} → {historyItem.newPlan.name}
+                        </p>
+                      )}
+                      {historyItem.metadata?.cancellationReason && (
+                        <p className="text-sm text-muted-foreground mt-1 italic">
+                          Reason: {historyItem.metadata.cancellationReason}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDate(historyItem.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Plan Features */}
       <Card>

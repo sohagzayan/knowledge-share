@@ -1,4 +1,6 @@
 import { getSubscriptionPlanBySlug } from "@/app/data/subscription/get-subscription-plan-by-slug";
+import { getUserRole, getRoleBasedRedirect } from "@/lib/role-access";
+import { isAdminPlan } from "@/lib/plan-utils";
 import { redirect } from "next/navigation";
 import { CheckoutForm } from "./_components/CheckoutForm";
 import { getUserSubscription } from "@/app/data/subscription/get-user-subscription";
@@ -23,14 +25,41 @@ export default async function CheckoutPage({
     redirect("/pricing");
   }
 
-  const [plan, currentSubscription] = await Promise.all([
+  const [plan, subscriptionData, userRole] = await Promise.all([
     getSubscriptionPlanBySlug(planSlug),
     getUserSubscription(),
+    getUserRole(),
   ]);
 
-  // If user already has an active subscription to this plan, redirect
+  if (!plan) {
+    redirect("/pricing");
+  }
+
+  const currentSubscription = subscriptionData.subscription;
+
+  // Check if user can subscribe to this plan type
+  const planIsTeacherPlan = isAdminPlan(plan);
+  
+  // SuperAdmin: redirect away (they don't need subscriptions)
+  if (userRole === "superadmin") {
+    const redirectUrl = await getRoleBasedRedirect();
+    redirect(redirectUrl);
+  }
+
+  // Admin: only allow teacher plans
+  if (userRole === "admin" && !planIsTeacherPlan) {
+    redirect("/admin");
+  }
+
+  // User: only allow student plans
+  if (userRole === "user" && planIsTeacherPlan) {
+    redirect("/pricing");
+  }
+
+  // If user already has an active subscription to this plan, redirect (role-aware)
   if (currentSubscription?.planId === plan.id && currentSubscription.status === "Active") {
-    redirect("/dashboard/subscription");
+    const subscriptionPath = userRole === "admin" ? "/admin/subscription" : "/dashboard/subscription";
+    redirect(subscriptionPath);
   }
 
   return (

@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download } from "lucide-react";
-import Link from "next/link";
 
 interface InvoiceListProps {
   invoices: UserInvoiceType[];
@@ -70,14 +69,16 @@ export function InvoiceList({ invoices }: InvoiceListProps) {
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                {invoice.pdfUrl && (
-                  <Link href={invoice.pdfUrl} target="_blank">
-                    <Button variant="ghost" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
-                  </Link>
-                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    window.open(`/api/invoices/user/${invoice.id}/download`, '_blank');
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
               </TableCell>
             </TableRow>
           ))}

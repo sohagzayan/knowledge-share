@@ -138,7 +138,7 @@ function NavDropdown({
         type="button"
         onClick={toggle}
         aria-expanded={open}
-        className="group relative flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5 overflow-hidden"
+        className="group relative flex items-center gap-1 text-sm text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 overflow-hidden"
       >
         <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
           {label}
@@ -240,7 +240,7 @@ function MultiLevelDropdown({
         type="button"
         onClick={toggle}
         aria-expanded={open}
-        className="group relative flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5 overflow-hidden"
+        className="group relative flex items-center gap-1 text-sm text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 overflow-hidden"
       >
         <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
           {label}
@@ -465,10 +465,10 @@ export function Navbar() {
         }`}
       >
       <div 
-        className={`flex items-center justify-between w-full max-w-4xl bg-black rounded-full px-6 py-2.5 transition-all duration-500 ease-out ${
+        className={`flex items-center justify-between w-full max-w-4xl bg-white dark:bg-black border border-gray-200 dark:border-0 rounded-full px-6 py-2.5 transition-all duration-500 ease-out ${
           isScrolled 
-            ? "shadow-2xl shadow-black/50 scale-[0.98]" 
-            : "shadow-lg shadow-black/30 scale-100"
+            ? "shadow-2xl shadow-gray-200/50 dark:shadow-black/50 scale-[0.98]" 
+            : "shadow-lg shadow-gray-200/30 dark:shadow-black/30 scale-100"
         }`}
       >
         <Link 
@@ -480,7 +480,7 @@ export function Navbar() {
             loading="lazy"
             width={120}
             height={28}
-            className="h-6 w-auto dark:invert transition-opacity duration-300"
+            className="h-6 w-auto invert dark:invert-0 transition-opacity duration-300"
             src={Logo}
             style={{ color: "transparent" }}
           />
@@ -490,7 +490,7 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-1">
           <Link
             href="/courses"
-            className="group relative text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5 overflow-hidden"
+            className="group relative text-sm text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 overflow-hidden"
           >
             <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
               Courses
@@ -502,7 +502,7 @@ export function Navbar() {
           
           <Link
             href="/about"
-            className="group relative text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5 overflow-hidden"
+            className="group relative text-sm text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 overflow-hidden"
           >
             <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
               About
@@ -512,7 +512,7 @@ export function Navbar() {
           
           <Link
             href="/pricing"
-            className="group relative text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5 overflow-hidden"
+            className="group relative text-sm text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 overflow-hidden"
           >
             <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
               Pricing
@@ -522,7 +522,7 @@ export function Navbar() {
           
           <Link
             href="/blogs"
-            className="group relative text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5 overflow-hidden"
+            className="group relative text-sm text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 overflow-hidden"
           >
             <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
               Blogs
@@ -532,7 +532,7 @@ export function Navbar() {
           
           <Link
             href="/career"
-            className="group relative text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5 overflow-hidden"
+            className="group relative text-sm text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 overflow-hidden"
           >
             <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
               Career
@@ -542,7 +542,7 @@ export function Navbar() {
           
           <Link
             href="/contact"
-            className="group relative text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5 overflow-hidden"
+            className="group relative text-sm text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 overflow-hidden"
           >
             <span className="relative z-10 transition-transform duration-300 group-hover:scale-105">
               Contact
@@ -574,7 +574,7 @@ export function Navbar() {
             <>
               <Link
                 href="/login"
-                className="text-sm text-muted-foreground hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-white/5"
+                className="text-sm text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5"
               >
                 Login
               </Link>
@@ -590,7 +590,7 @@ export function Navbar() {
         {/* Mobile menu button */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="md:hidden p-1.5 text-muted-foreground hover:text-foreground transition-all duration-300 rounded-lg hover:bg-white/5 active:scale-95"
+          className="md:hidden p-1.5 text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95"
           aria-label="Toggle menu"
         >
           {isMobileMenuOpen ? (
@@ -617,13 +617,13 @@ export function Navbar() {
         />
         
         {/* Menu Content */}
-        <div className="absolute top-0 left-0 right-0 bg-black border-b border-border shadow-2xl overflow-y-auto max-h-screen overflow-x-visible">
+        <div className="absolute top-0 left-0 right-0 bg-white dark:bg-black border-b border-gray-200 dark:border-border shadow-2xl overflow-y-auto max-h-screen overflow-x-visible">
           <div className="px-4 py-6 space-y-2">
             {/* Mobile menu items - organized in logical order */}
             <Link
               href="/courses"
               onClick={() => setIsMobileMenuOpen(false)}
-              className={`group relative block px-4 py-3 text-base text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
+              className={`group relative block px-4 py-3 text-base text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
                 isMobileMenuOpen ? "translate-x-0 opacity-100" : "-translate-x-4 opacity-0"
               }`}
               style={{ transitionDelay: "50ms" }}
@@ -637,7 +637,7 @@ export function Navbar() {
             <Link
               href="/about"
               onClick={() => setIsMobileMenuOpen(false)}
-              className={`group relative block px-4 py-3 text-base text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
+              className={`group relative block px-4 py-3 text-base text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
                 isMobileMenuOpen ? "translate-x-0 opacity-100" : "-translate-x-4 opacity-0"
               }`}
               style={{ transitionDelay: "100ms" }}
@@ -651,7 +651,7 @@ export function Navbar() {
             <Link
               href="/pricing"
               onClick={() => setIsMobileMenuOpen(false)}
-              className={`group relative block px-4 py-3 text-base text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
+              className={`group relative block px-4 py-3 text-base text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
                 isMobileMenuOpen ? "translate-x-0 opacity-100" : "-translate-x-4 opacity-0"
               }`}
               style={{ transitionDelay: "150ms" }}
@@ -665,7 +665,7 @@ export function Navbar() {
             <Link
               href="/blogs"
               onClick={() => setIsMobileMenuOpen(false)}
-              className={`group relative block px-4 py-3 text-base text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
+              className={`group relative block px-4 py-3 text-base text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
                 isMobileMenuOpen ? "translate-x-0 opacity-100" : "-translate-x-4 opacity-0"
               }`}
               style={{ transitionDelay: "200ms" }}
@@ -679,7 +679,7 @@ export function Navbar() {
             <Link
               href="/career"
               onClick={() => setIsMobileMenuOpen(false)}
-              className={`group relative block px-4 py-3 text-base text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
+              className={`group relative block px-4 py-3 text-base text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
                 isMobileMenuOpen ? "translate-x-0 opacity-100" : "-translate-x-4 opacity-0"
               }`}
               style={{ transitionDelay: "250ms" }}
@@ -693,7 +693,7 @@ export function Navbar() {
             <Link
               href="/contact"
               onClick={() => setIsMobileMenuOpen(false)}
-              className={`group relative block px-4 py-3 text-base text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
+              className={`group relative block px-4 py-3 text-base text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all duration-300 overflow-hidden ${
                 isMobileMenuOpen ? "translate-x-0 opacity-100" : "-translate-x-4 opacity-0"
               }`}
               style={{ transitionDelay: "300ms" }}
@@ -705,7 +705,7 @@ export function Navbar() {
             </Link>
 
             {/* Mobile auth buttons */}
-            <div className="pt-4 border-t border-border mt-4 space-y-2 relative z-[70]">
+            <div className="pt-4 border-t border-gray-200 dark:border-border mt-4 space-y-2 relative z-[70]">
               {isPending ? null : session?.user ? (
                 <div className="px-4 relative z-[70]">
                   <div className="relative z-[70]">
@@ -732,7 +732,7 @@ export function Navbar() {
                   <Link
                     href="/login"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="block px-4 py-3 text-base text-center text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg transition-all duration-200"
+                    className="block px-4 py-3 text-base text-center text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all duration-200"
                   >
                     Login
                   </Link>

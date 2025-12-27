@@ -27,7 +27,8 @@
     "migrate:reactions": "node scripts/apply-reaction-table.js",
     "migrate:organization": "node scripts/apply-organization-table.js",
     "migrate:subscriptions": "node scripts/apply-subscription-tables.js",
-    "seed:plans": "npx tsx scripts/seed-subscription-plans.ts"
+    "seed:plans": "npx tsx scripts/seed-subscription-plans.ts",
+    "seed:teacher-plans": "npx tsx scripts/seed-teacher-plans.ts"
   },
   "dependencies": {
     "@arcjet/inspect": "1.0.0-beta.8",

@@ -1,17 +1,9 @@
 import "server-only";
-
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "./require-admin";
 import { prisma } from "@/lib/db";
 
-export async function getUserSubscription() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return {
-      subscription: null,
-      subscriptionHistory: [],
-    };
-  }
+export async function getAdminSubscription() {
+  const session = await requireAdmin();
 
   // Get the most recent subscription (including cancelled ones to show history)
   const subscription = await prisma.userSubscription.findFirst({
@@ -45,17 +37,27 @@ export async function getUserSubscription() {
     },
   });
 
+  // Get all invoices for this user, ordered by date (newest first)
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      userId: session.user.id,
+    },
+    include: {
+      subscription: {
+        include: {
+          plan: true,
+        },
+      },
+    },
+    orderBy: {
+      paymentDate: "desc",
+    },
+  });
+
   return {
     subscription,
     subscriptionHistory,
+    invoices,
   };
 }
-
-export type UserSubscriptionType = Awaited<
-  ReturnType<typeof getUserSubscription>
->["subscription"];
-
-export type UserSubscriptionHistoryType = Awaited<
-  ReturnType<typeof getUserSubscription>
->["subscriptionHistory"];
 
