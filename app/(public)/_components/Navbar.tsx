@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Menu, X, ChevronRight } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { UserDropdown } from "./UserDropdown";
 import { getUserRole } from "./get-user-role";
 import { useConstructUrl as constructFileUrl } from "@/hooks/use-construct-url";
-import Logo from "@/public/logo.png";
+import { FloatingThemeToggle } from "@/components/ui/floating-theme-toggle";
 
 
 const instructorItems = [
@@ -475,15 +474,9 @@ export function Navbar() {
           href="/" 
           className="flex items-center transition-transform duration-300 hover:scale-105"
         >
-          <Image
-            alt="Edupeak"
-            loading="lazy"
-            width={120}
-            height={28}
-            className="h-6 w-auto invert dark:invert-0 transition-opacity duration-300"
-            src={Logo}
-            style={{ color: "transparent" }}
-          />
+          <span className="text-xl font-bold text-gray-900 dark:text-white">
+            Edupeak
+          </span>
         </Link>
 
         {/* Desktop navigation */}
@@ -553,6 +546,9 @@ export function Navbar() {
 
         {/* Desktop auth buttons */}
         <div className="hidden md:flex items-center gap-2">
+          {/* Theme Toggle */}
+          <FloatingThemeToggle />
+          
           {isPending ? null : session?.user ? (
             <UserDropdown
               email={session.user.email || ""}
@@ -587,18 +583,23 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="md:hidden p-1.5 text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95"
-          aria-label="Toggle menu"
-        >
-          {isMobileMenuOpen ? (
-            <X className="h-5 w-5 transition-transform duration-300" />
-          ) : (
-            <Menu className="h-5 w-5 transition-transform duration-300" />
-          )}
-        </button>
+        {/* Mobile menu button and theme toggle */}
+        <div className="md:hidden flex items-center gap-2">
+          {/* Theme Toggle for Mobile - Always visible */}
+          <FloatingThemeToggle />
+          
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-1.5 text-gray-700 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground transition-all duration-300 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95"
+            aria-label="Toggle menu"
+          >
+            {isMobileMenuOpen ? (
+              <X className="h-5 w-5 transition-transform duration-300" />
+            ) : (
+              <Menu className="h-5 w-5 transition-transform duration-300" />
+            )}
+          </button>
+        </div>
       </div>
     </nav>
 
