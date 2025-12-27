@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Script to create 100 commits by modifying and reverting README.md
+# Script to create 1000+ commits by modifying and reverting README.md
 # This will create commit history without changing the final state of README.md
 
-echo "Starting to create 100 commits..."
-echo "This will modify README.md and revert it back 100 times"
+echo "Starting to create 1000 commits..."
+echo "This will modify README.md and revert it back 1000 times"
 echo ""
 
 # Check if we're in a git repository
@@ -34,9 +34,11 @@ echo ""
 # Store original README.md content
 ORIGINAL_CONTENT=$(cat README.md)
 
-# Create 100 commits (50 pairs: change + revert)
-for i in {1..50}; do
-    echo "Creating commits $((i*2-1))-$((i*2))/100..."
+# Create 1000 commits (500 pairs: change + revert)
+for i in {1..500}; do
+    if [ $((i % 50)) -eq 0 ]; then
+        echo "Progress: Creating commits $((i*2-1))-$((i*2))/1000..."
+    fi
     
     # Add a comment at the end of the file (trivial change)
     echo "" >> README.md
@@ -55,7 +57,7 @@ for i in {1..50}; do
 done
 
 echo ""
-echo "✅ Successfully created 100 commits (50 pairs of update + revert)!"
+echo "✅ Successfully created 1000 commits (500 pairs of update + revert)!"
 echo "The README.md file is back to its original state."
 echo ""
 echo "To push to GitHub dev branch, run:"
